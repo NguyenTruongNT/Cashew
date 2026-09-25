@@ -156,6 +156,44 @@ class AboutPageState extends State<AboutPage> {
         padding:
             const EdgeInsetsDirectional.symmetric(horizontal: 15, vertical: 5),
         child: Tappable(
+          color: containerColor,
+          borderRadius: getPlatform() == PlatformOS.isIOS ? 10 : 15,
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              children: [
+                TextFont(
+                  text: "NHÓM THỰC HIỆN ĐỒ ÁN",
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                ),
+                SizedBox(height: 10),
+                TextFont(text: "Nguyễn Văn Trường"),
+                TextFont(text: "MSSV: 2351170625"),
+                TextFont(text: "Nhóm trưởng"),
+                SizedBox(height: 10),
+                TextFont(text: "Vũ Tuấn Khanh"),
+                TextFont(text: "MSSV: 2251172386"),
+                TextFont(text: "UI/UX"),
+                SizedBox(height: 10),
+                TextFont(text: "Vũ Hải Đăng"),
+                TextFont(text: "MSSV: 2351170580"),
+                TextFont(text: "Tính năng nghiệp vụ"),
+                SizedBox(height: 10),
+                TextFont(text: "Lý Đình Sơn"),
+                TextFont(text: "MSSV: 2351170615"),
+                TextFont(text: "Kiểm thử"),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Padding(
+        padding:
+            const EdgeInsetsDirectional.symmetric(horizontal: 15, vertical: 5),
+        child: Tappable(
           onTap: () {},
           color: containerColor,
           borderRadius: getPlatform() == PlatformOS.isIOS ? 10 : 15,

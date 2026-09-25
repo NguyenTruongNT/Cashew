@@ -423,6 +423,50 @@ class SettingsPageFrameworkState extends State<SettingsPageFramework> {
   }
 }
 
+Widget _buildTeamMemberChip(
+  BuildContext context, {
+  required String name,
+  required IconData icon,
+  bool highlighted = false,
+}) {
+  final Color accentColor = highlighted
+      ? Theme.of(context).colorScheme.primary
+      : Theme.of(context).colorScheme.secondary;
+
+  return Container(
+    padding: const EdgeInsetsDirectional.symmetric(
+      horizontal: 11,
+      vertical: 8,
+    ),
+    decoration: BoxDecoration(
+      color: highlighted
+          ? Theme.of(context).colorScheme.primary.withOpacity(0.16)
+          : Theme.of(context).colorScheme.surface.withOpacity(0.55),
+      borderRadius: BorderRadius.circular(30),
+      border: Border.all(
+        color: accentColor.withOpacity(highlighted ? 0.42 : 0.20),
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 17,
+          color: accentColor,
+        ),
+        const SizedBox(width: 6),
+        TextFont(
+          text: name,
+          fontSize: 13,
+          fontWeight: highlighted ? FontWeight.bold : FontWeight.normal,
+          maxLines: 1,
+        ),
+      ],
+    ),
+  );
+}
+
 class SettingsPageContent extends StatelessWidget {
   const SettingsPageContent({super.key});
 
@@ -432,7 +476,280 @@ class SettingsPageContent extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // =========================================================
+        // BANNER NHẬN DIỆN NHÓM ĐỒ ÁN
+        // Người thực hiện: Vũ Tuấn Khanh
+        // =========================================================
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsetsDirectional.only(
+            start: 4,
+            end: 4,
+            top: 6,
+            bottom: 18,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primaryContainer,
+                Theme.of(context).colorScheme.secondaryContainer,
+                Theme.of(context).colorScheme.tertiaryContainer,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.22),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Stack(
+              children: [
+                PositionedDirectional(
+                  top: -35,
+                  end: -30,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.10),
+                    ),
+                  ),
+                ),
+                PositionedDirectional(
+                  bottom: -45,
+                  start: -35,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .tertiary
+                          .withOpacity(0.10),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    20,
+                    22,
+                    20,
+                    20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.22),
+                              ),
+                            ),
+                            child: Image.asset(
+                              "assets/icon/icon-small.png",
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.account_balance_wallet_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 30,
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding:
+                                      const EdgeInsetsDirectional.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.13),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: TextFont(
+                                    text: "ĐỒ ÁN MÔN HỌC",
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    textColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFont(
+                                  text: "CASHEW",
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.bold,
+                                  textColor: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
+                                  maxLines: 1,
+                                ),
+                                TextFont(
+                                  text: "STUDENT EDITION",
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  textColor:
+                                      Theme.of(context).colorScheme.secondary,
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      TextFont(
+                        text: "Ứng dụng quản lý chi tiêu cá nhân",
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        textColor:
+                            Theme.of(context).colorScheme.onPrimaryContainer,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 5),
+                      TextFont(
+                        text:
+                            "Theo dõi giao dịch, ngân sách và kế hoạch tài chính dành cho sinh viên.",
+                        fontSize: 14,
+                        textColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimaryContainer
+                            .withOpacity(0.72),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.groups_rounded,
+                            size: 21,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 7),
+                          TextFont(
+                            text: "NHÓM THỰC HIỆN",
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            textColor: Theme.of(context).colorScheme.primary,
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildTeamMemberChip(
+                            context,
+                            name: "Nguyễn Văn Trường",
+                            icon: Icons.admin_panel_settings_rounded,
+                          ),
+                          _buildTeamMemberChip(
+                            context,
+                            name: "Vũ Tuấn Khanh",
+                            icon: Icons.palette_rounded,
+                            highlighted: true,
+                          ),
+                          _buildTeamMemberChip(
+                            context,
+                            name: "Vũ Hải Đăng",
+                            icon: Icons.data_object_rounded,
+                          ),
+                          _buildTeamMemberChip(
+                            context,
+                            name: "Lý Đình Sơn",
+                            icon: Icons.fact_check_rounded,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsetsDirectional.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surface
+                              .withOpacity(0.52),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.code_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                            const SizedBox(width: 7),
+                            const Flexible(
+                              child: TextFont(
+                                text:
+                                    "Flutter  •  Dart  •  Drift  •  Material You",
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
         SettingsHeader(title: "theme".tr()),
+        SettingsHeader(title: "theme".tr()),
+
         Builder(
           builder: (context) {
             late Color? selectedColor =
@@ -450,12 +767,16 @@ class SettingsPageContent extends StatelessWidget {
                         getPlatform() == PlatformOS.isIOS
                             ? Padding(
                                 padding: const EdgeInsetsDirectional.only(
-                                    bottom: 8.0),
+                                  bottom: 8.0,
+                                ),
                                 child: SettingsContainerSwitch(
                                   title: "colorful-interface".tr(),
                                   onSwitched: (value) {
-                                    updateSettings("materialYou", value,
-                                        updateGlobalState: true);
+                                    updateSettings(
+                                      "materialYou",
+                                      value,
+                                      updateGlobalState: true,
+                                    );
                                   },
                                   initialValue: appStateSettings["materialYou"],
                                   icon: appStateSettings["outlinedIcons"]
@@ -464,17 +785,26 @@ class SettingsPageContent extends StatelessWidget {
                                   enableBorderRadius: true,
                                 ),
                               )
-                            : SizedBox.shrink(),
+                            : const SizedBox.shrink(),
                         SelectColor(
                           selectableColorsList: selectableAccentColors(context),
                           includeThemeColor: false,
                           selectedColor: selectedColor,
                           setSelectedColor: (color) {
                             selectedColor = color;
-                            updateSettings("accentColor", toHexString(color),
-                                updateGlobalState: true);
-                            updateSettings("accentSystemColor", false,
-                                updateGlobalState: true);
+
+                            updateSettings(
+                              "accentColor",
+                              toHexString(color),
+                              updateGlobalState: true,
+                            );
+
+                            updateSettings(
+                              "accentSystemColor",
+                              false,
+                              updateGlobalState: true,
+                            );
+
                             updateWidgetColorsAndText(context);
                           },
                           useSystemColorPrompt: true,
@@ -492,22 +822,27 @@ class SettingsPageContent extends StatelessWidget {
             );
           },
         ),
+
         getPlatform() == PlatformOS.isIOS
-            ? SizedBox.shrink()
+            ? const SizedBox.shrink()
             : SettingsContainerSwitch(
                 title: "material-you".tr(),
                 description: "material-you-description".tr(),
                 onSwitched: (value) {
-                  updateSettings("materialYou", value, updateGlobalState: true);
+                  updateSettings(
+                    "materialYou",
+                    value,
+                    updateGlobalState: true,
+                  );
                 },
                 initialValue: appStateSettings["materialYou"],
                 icon: appStateSettings["outlinedIcons"]
                     ? Icons.brush_outlined
                     : Icons.brush_rounded,
               ),
-        ThemeSettingsDropdown(),
 
-        // EnterName(),
+        const ThemeSettingsDropdown(),
+
         SettingsHeader(title: "preferences".tr()),
 
         SettingsContainerOpenPage(
@@ -526,9 +861,9 @@ class SettingsPageContent extends StatelessWidget {
                     ? Icons.notifications_outlined
                     : Icons.notifications_rounded,
               )
-            : SizedBox.shrink(),
+            : const SizedBox.shrink(),
 
-        BiometricsSettingToggle(),
+        const BiometricsSettingToggle(),
 
         SettingsContainer(
           title: "language".tr(),
@@ -540,10 +875,13 @@ class SettingsPageContent extends StatelessWidget {
             borderRadius: 10,
             child: Padding(
               padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: 16, vertical: 10),
+                horizontal: 16,
+                vertical: 10,
+              ),
               child: TextFont(
                 text: languageDisplayFilter(
-                    appStateSettings["locale"].toString()),
+                  appStateSettings["locale"].toString(),
+                ),
                 fontSize: 14,
               ),
             ),
@@ -554,7 +892,7 @@ class SettingsPageContent extends StatelessWidget {
         ),
 
         SettingsContainerOpenPage(
-          openPage: MoreOptionsPagePreferences(),
+          openPage: const MoreOptionsPagePreferences(),
           title: "more-options".tr(),
           description: "more-options-description".tr(),
           icon: appStateSettings["outlinedIcons"]
@@ -563,11 +901,6 @@ class SettingsPageContent extends StatelessWidget {
         ),
 
         SettingsHeader(title: "tools-and-extras".tr()),
-        // SettingsContainerOpenPage(
-        //   openPage: AutoTransactionsPage(),
-        //   title: "Auto Transactions",
-        //   icon: appStateSettings["outlinedIcons"] ? Icons.auto_fix_high_outlined : Icons.auto_fix_high_rounded,
-        // ),
 
         appStateSettings["emailScanning"]
             ? SettingsContainerOpenPage(
@@ -577,7 +910,7 @@ class SettingsPageContent extends StatelessWidget {
                     ? Icons.mark_email_unread_outlined
                     : Icons.mark_email_unread_rounded,
               )
-            : SizedBox.shrink(),
+            : const SizedBox.shrink(),
 
         appStateSettings["notificationScanningDebug"] &&
                 getPlatform(ignoreEmulation: true) == PlatformOS.isAndroid
@@ -588,7 +921,7 @@ class SettingsPageContent extends StatelessWidget {
                     ? Icons.edit_notifications_outlined
                     : Icons.edit_notifications_rounded,
               )
-            : SizedBox.shrink(),
+            : const SizedBox.shrink(),
 
         SettingsContainerOpenPage(
           openPage: BillSplitter(),
