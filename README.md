@@ -131,7 +131,7 @@ Các nội dung dưới đây là kế hoạch tùy chỉnh của nhóm trên ha
 #### 1. Clone mã nguồn dự án
 
 ```bash
-git clone https://github.com/truongnguyen2005/Cashew.git
+git clone https://github.com/NguyenTruongNT/Cashew.git
 cd Cashew/budget
 ```
 
