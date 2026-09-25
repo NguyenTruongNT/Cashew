@@ -1127,7 +1127,7 @@ class AboutInfoBox extends StatelessWidget {
   }
 }
 // =========================================================
-// WIDGET: THẺ HIỂN THỊ THÔNG TIN THÀNH VIÊN NHÓM
+// WIDGET: THẺ HIỂN THỊ THÔNG TIN THÀNH VIÊN GROUP 12
 // =========================================================
 class StudentMemberCard extends StatelessWidget {
   final String name;
