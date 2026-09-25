@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 Map<String, dynamic> currenciesJSON = {};
+const String defaultCurrencyCode = "vnd";
 
 loadCurrencyJSON() async {
   currenciesJSON = await json.decode(

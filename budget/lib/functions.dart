@@ -211,9 +211,9 @@ String convertToMoney(AllWallets allWallets, double amount,
               hasDecimalPoints(amount)
           ? numberDecimals
           : 0;
-  String? locale = appStateSettings["customNumberFormat"] == true
+    String? locale = appStateSettings["customNumberFormat"] == true
       ? "en-US"
-      : Platform.localeName;
+      : "vi-VN";
   String? symbol =
       customSymbol ?? getCurrencyString(allWallets, currencyKey: currencyKey);
 
@@ -1205,21 +1205,7 @@ List<String> popularCurrencies = [
 ];
 
 String getDevicesDefaultCurrencyCode() {
-  try {
-    String? currentCountryCode =
-        WidgetsBinding.instance.platformDispatcher.locale.countryCode;
-    // print(currentCountryCode);
-    for (String currencyKey in currenciesJSON.keys) {
-      if (currenciesJSON[currencyKey] != null &&
-          currenciesJSON[currencyKey]["CountryCode"] != null &&
-          currenciesJSON[currencyKey]["CountryCode"] == currentCountryCode) {
-        return currencyKey;
-      }
-    }
-  } catch (e) {
-    print("Error getting default currency " + e.toString());
-  }
-  return popularCurrencies[0];
+  return defaultCurrencyCode;
 }
 
 void copyToClipboard(String text,

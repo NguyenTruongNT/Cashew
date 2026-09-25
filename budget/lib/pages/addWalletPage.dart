@@ -64,7 +64,7 @@ class _AddWalletPageState extends State<AddWalletPage> {
   String? searchCurrency = "";
   String selectedCurrency =
       getDevicesDefaultCurrencyCode(); //if no currency selected use empty string
-  int selectedDecimals = 2;
+  int selectedDecimals = 0;
   FocusNode _titleFocusNode = FocusNode();
 
   void setSelectedTitle(String title) {
