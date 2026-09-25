@@ -152,39 +152,65 @@ class AboutPageState extends State<AboutPage> {
           ),
         ),
       ),
+      // PHẦN THAY THẾ CHO KHỐI "NHÓM THỰC HIỆN ĐỒ ÁN"
       Padding(
-        padding:
-            const EdgeInsetsDirectional.symmetric(horizontal: 15, vertical: 5),
-        child: Tappable(
-          color: containerColor,
-          borderRadius: getPlatform() == PlatformOS.isIOS ? 10 : 15,
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: 15, vertical: 5),
+        child: Container(
+          decoration: BoxDecoration(
+            color: containerColor,
+            borderRadius: BorderRadius.circular(getPlatform() == PlatformOS.isIOS ? 10 : 15),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.all(18),
             child: Column(
               children: [
-                TextFont(
-                  text: "NHÓM THỰC HIỆN ĐỒ ÁN",
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
+                // Tiêu đề
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.groups_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 8),
+                    TextFont(
+                      text: "NHÓM THỰC HIỆN ĐỒ ÁN",
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold,
+                      textColor: Theme.of(context).colorScheme.primary,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                    ),
+                  ],
                 ),
-                SizedBox(height: 10),
-                TextFont(text: "Nguyễn Văn Trường"),
-                TextFont(text: "MSSV: 2351170625"),
-                TextFont(text: "Nhóm trưởng"),
-                SizedBox(height: 10),
-                TextFont(text: "Vũ Tuấn Khanh"),
-                TextFont(text: "MSSV: 2251172386"),
-                TextFont(text: "UI/UX"),
-                SizedBox(height: 10),
-                TextFont(text: "Vũ Hải Đăng"),
-                TextFont(text: "MSSV: 2351170580"),
-                TextFont(text: "Tính năng nghiệp vụ"),
-                SizedBox(height: 10),
-                TextFont(text: "Lý Đình Sơn"),
-                TextFont(text: "MSSV: 2351170615"),
-                TextFont(text: "Kiểm thử"),
+                const SizedBox(height: 18),
+                
+                // Gọi thẻ StudentMemberCard cho từng thành viên
+                const StudentMemberCard(
+                  name: "Nguyễn Văn Trường",
+                  studentId: "2351170625",
+                  role: "Nhóm trưởng",
+                  icon: Icons.admin_panel_settings_rounded,
+                ),
+                const StudentMemberCard(
+                  name: "Vũ Tuấn Khanh",
+                  studentId: "2251172386",
+                  role: "Thiết kế UI/UX",
+                  icon: Icons.palette_rounded,
+                ),
+                const StudentMemberCard(
+                  name: "Vũ Hải Đăng",
+                  studentId: "2351170580",
+                  role: "Tính năng nghiệp vụ",
+                  icon: Icons.data_object_rounded,
+                ),
+                const StudentMemberCard(
+                  name: "Lý Đình Sơn",
+                  studentId: "2351170615",
+                  role: "Kiểm thử (Testing)",
+                  icon: Icons.fact_check_rounded,
+                ),
               ],
             ),
           ),
@@ -1139,6 +1165,112 @@ class AboutInfoBox extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+// =========================================================
+// WIDGET: THẺ HIỂN THỊ THÔNG TIN THÀNH VIÊN NHÓM
+// =========================================================
+class StudentMemberCard extends StatelessWidget {
+  final String name;
+  final String role;
+  final String studentId;
+  final IconData icon;
+
+  const StudentMemberCard({
+    Key? key,
+    required this.name,
+    required this.role,
+    required this.studentId,
+    required this.icon,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsetsDirectional.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            // Cột bên trái: Avatar / Biểu tượng
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 28,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Cột bên phải: Thông tin chi tiết
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFont(
+                    text: name,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    textColor: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.badge_outlined,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 4),
+                      TextFont(
+                        text: "MSSV: $studentId",
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        textColor: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextFont(
+                      text: role,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      textColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

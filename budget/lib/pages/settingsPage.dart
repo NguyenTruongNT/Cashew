@@ -467,27 +467,75 @@ Widget _buildTeamMemberChip(
   );
 }
 
-class SettingsPageContent extends StatelessWidget {
-  const SettingsPageContent({super.key});
+// =========================================================
+// WIDGET: BANNER NHẬN DIỆN NHÓM ĐỒ ÁN
+// Tích hợp: Tên đồ án, Logo, Thành viên & Hỗ trợ chuyển trang
+// =========================================================
+class TeamBrandingBanner extends StatelessWidget {
+  const TeamBrandingBanner({Key? key}) : super(key: key);
+
+  Widget _buildTeamMemberChip(
+    BuildContext context, {
+    required String name,
+    required IconData icon,
+    bool highlighted = false,
+  }) {
+    final Color accentColor = highlighted
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.secondary;
+
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 11,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? Theme.of(context).colorScheme.primary.withOpacity(0.16)
+            : Theme.of(context).colorScheme.surface.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: accentColor.withOpacity(highlighted ? 0.42 : 0.20),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 17,
+            color: accentColor,
+          ),
+          const SizedBox(width: 6),
+          TextFont(
+            text: name,
+            fontSize: 13,
+            fontWeight: highlighted ? FontWeight.bold : FontWeight.normal,
+            maxLines: 1,
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // =========================================================
-        // BANNER NHẬN DIỆN NHÓM ĐỒ ÁN
-        // Người thực hiện: Vũ Tuấn Khanh
-        // =========================================================
-        Container(
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(
+        start: 4,
+        end: 4,
+        top: 6,
+        bottom: 18,
+      ),
+      child: Tappable(
+        borderRadius: 24,
+        color: Colors.transparent,
+        onTap: () {
+          // Chuyển hướng sang màn hình AboutPage khi nhấn vào Banner
+          pushRoute(context, const AboutPage());
+        },
+        child: Container(
           width: double.infinity,
-          margin: const EdgeInsetsDirectional.only(
-            start: 4,
-            end: 4,
-            top: 6,
-            bottom: 18,
-          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -515,6 +563,7 @@ class SettingsPageContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             child: Stack(
               children: [
+                // Hiệu ứng bong bóng nền (Glassmorphism)
                 PositionedDirectional(
                   top: -35,
                   end: -30,
@@ -545,13 +594,9 @@ class SettingsPageContent extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Nội dung chính của Banner
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                    20,
-                    22,
-                    20,
-                    20,
-                  ),
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 22, 20, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -593,8 +638,7 @@ class SettingsPageContent extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding:
-                                      const EdgeInsetsDirectional.symmetric(
+                                  padding: const EdgeInsetsDirectional.symmetric(
                                     horizontal: 10,
                                     vertical: 5,
                                   ),
@@ -609,8 +653,7 @@ class SettingsPageContent extends StatelessWidget {
                                     text: "ĐỒ ÁN MÔN HỌC",
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    textColor:
-                                        Theme.of(context).colorScheme.primary,
+                                    textColor: Theme.of(context).colorScheme.primary,
                                     maxLines: 1,
                                   ),
                                 ),
@@ -619,17 +662,14 @@ class SettingsPageContent extends StatelessWidget {
                                   text: "CASHEW",
                                   fontSize: 27,
                                   fontWeight: FontWeight.bold,
-                                  textColor: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer,
+                                  textColor: Theme.of(context).colorScheme.onPrimaryContainer,
                                   maxLines: 1,
                                 ),
                                 TextFont(
                                   text: "STUDENT EDITION",
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  textColor:
-                                      Theme.of(context).colorScheme.secondary,
+                                  textColor: Theme.of(context).colorScheme.secondary,
                                   maxLines: 1,
                                 ),
                               ],
@@ -642,19 +682,14 @@ class SettingsPageContent extends StatelessWidget {
                         text: "Ứng dụng quản lý chi tiêu cá nhân",
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        textColor:
-                            Theme.of(context).colorScheme.onPrimaryContainer,
+                        textColor: Theme.of(context).colorScheme.onPrimaryContainer,
                         maxLines: 2,
                       ),
                       const SizedBox(height: 5),
                       TextFont(
-                        text:
-                            "Theo dõi giao dịch, ngân sách và kế hoạch tài chính dành cho sinh viên.",
+                        text: "Theo dõi giao dịch, ngân sách và kế hoạch tài chính dành cho sinh viên.",
                         fontSize: 14,
-                        textColor: Theme.of(context)
-                            .colorScheme
-                            .onPrimaryContainer
-                            .withOpacity(0.72),
+                        textColor: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.72),
                         maxLines: 3,
                       ),
                       const SizedBox(height: 18),
@@ -711,10 +746,7 @@ class SettingsPageContent extends StatelessWidget {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surface
-                              .withOpacity(0.52),
+                          color: Theme.of(context).colorScheme.surface.withOpacity(0.52),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
@@ -728,8 +760,7 @@ class SettingsPageContent extends StatelessWidget {
                             const SizedBox(width: 7),
                             const Flexible(
                               child: TextFont(
-                                text:
-                                    "Flutter  •  Dart  •  Drift  •  Material You",
+                                text: "Flutter  •  Dart  •  Drift  •  Material You",
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 textAlign: TextAlign.center,
@@ -746,8 +777,28 @@ class SettingsPageContent extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
 
-        SettingsHeader(title: "theme".tr()),
+// =========================================================
+// CLASS: SettingsPageContent
+// Đã được tinh gọn và gọi TeamBrandingBanner ở đầu trang
+// =========================================================
+class SettingsPageContent extends StatelessWidget {
+  const SettingsPageContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        
+        // Gọi Widget Banner Nhóm ở vị trí nổi bật
+        const TeamBrandingBanner(),
+
         SettingsHeader(title: "theme".tr()),
 
         Builder(
@@ -959,7 +1010,6 @@ class SettingsPageContent extends StatelessWidget {
     );
   }
 }
-
 class ThemeSettingsDropdown extends StatefulWidget {
   const ThemeSettingsDropdown({super.key});
 
