@@ -21,11 +21,11 @@
 
 | Mục | Yêu Cầu Checklist | Người Phụ Trách | Người Phối Hợp | Chi Tiết Công Việc & Sản Phẩm Bàn Giao | Tên Nhánh Git | Trạng Thái |
 |:---:|:---|:---:|:---:|:---|:---|:---:|
-| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang repo của nhóm<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn clone mã nguồn | `truong-setup-repo` | ⬜ Chưa hoàn thành |
-| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK, Dart SDK tương thích<br>• Chạy `flutter pub get`<br>• Khắc phục lỗi thư viện & chuẩn hóa môi trường local | `khanh-setup-env` | ⬜ Chưa hoàn thành |
-| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Lý Đình Sơn** | Vũ Hải Đăng | • Chạy ứng dụng trên Emulator / thiết bị thật<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Chụp ảnh minh chứng lưu tại `screenshots/crud/` | `son-test-crud` | ⬜ Chưa hoàn thành |
-| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Vũ Tuấn Khanh** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Khanh):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi banner nhận diện.<br>• **Tính năng (Đăng):** Bổ sung danh mục sinh viên, định dạng tiền VNĐ.<br>• Hoàn thành code, review và merge vào `main`. | `khanh-custom-ui`<br>`dang-custom-feature` | ⬜ Chưa hoàn thành |
-| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Lý Đình Sơn, Vũ Hải Đăng | • Đóng gói ứng dụng thành file APK release<br>• Kiểm tra lại các quy trình chất lượng (QA)<br>• Tổng hợp ảnh chụp màn hình và nộp link GitHub | `truong-build-release` | ⬜ Chưa hoàn thành |
+| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang repo của nhóm<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn clone mã nguồn | `truong-setup-repo` | ✅ Đã hoàn thành |
+| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK, Dart SDK tương thích<br>• Chạy `flutter pub get`<br>• Khắc phục lỗi thư viện & chuẩn hóa môi trường local | `khanh-setup-env` | ✅ Đã hoàn thành |
+| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Lý Đình Sơn** | Vũ Hải Đăng | • Chạy ứng dụng trên Emulator / thiết bị thật<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Chụp ảnh minh chứng lưu tại `screenshots/crud/` | `son-test-crud` | ✅ Đã hoàn thành |
+| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Vũ Tuấn Khanh** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Khanh):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi banner nhận diện.<br>• **Tính năng (Đăng):** Bổ sung danh mục sinh viên, định dạng tiền VNĐ.<br>• Hoàn thành code, review và merge vào `main`. | `khanh-custom-ui`<br>`dang-custom-feature` | ✅ Đã hoàn thành |
+| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Lý Đình Sơn, Vũ Hải Đăng | • Đóng gói ứng dụng thành file APK release<br>• Kiểm tra lại các quy trình chất lượng (QA)<br>• Tổng hợp ảnh chụp màn hình và nộp link GitHub | `truong-build-release` | ✅ Đã hoàn thành |
 
 ---
 
@@ -40,10 +40,10 @@
 
 | Thành Viên | Tiền Tố | Tên Nhánh Khi Push Code | Mục Đích / Chức Năng Phụ Trách | Trạng Thái Nhánh |
 |---|:---:|:---|:---|:---:|
-| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo, review code<br>• Đóng gói APK và hoàn thiện tài liệu nộp bài | ⬜ Chưa hoàn thành |
-| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-env`<br>`khanh-custom-ui` | • Thiết lập thư viện và tài liệu môi trường<br>• Tùy chỉnh giao diện: màn hình giới thiệu nhóm, banner | ⬜ Chưa hoàn thành |
-| **Vũ Hải Đăng** | `dang-` | `dang-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định<br>• Thêm danh mục chi tiêu sinh viên | ⬜ Chưa hoàn thành |
-| **Lý Đình Sơn** | `son-` | `son-test-crud` | • Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch | ⬜ Chưa hoàn thành |
+| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo, review code<br>• Đóng gói APK và hoàn thiện tài liệu nộp bài | ✅ Đã hoàn thành |
+| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-env`<br>`khanh-custom-ui` | • Thiết lập thư viện và tài liệu môi trường<br>• Tùy chỉnh giao diện: màn hình giới thiệu nhóm, banner | ✅ Đã hoàn thành |
+| **Vũ Hải Đăng** | `dang-` | `dang-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định<br>• Thêm danh mục chi tiêu sinh viên | ✅ Đã hoàn thành |
+| **Lý Đình Sơn** | `son-` | `son-test-crud` | • Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch | ✅ Đã hoàn thành |
 
 ---
 
@@ -83,7 +83,7 @@ Các nội dung dưới đây là kế hoạch tùy chỉnh của nhóm trên ha
 
 ### 🎨 4.1. Tùy Biến Giao Diện & Nhận Diện Nhóm  
 **Người thực hiện: Vũ Tuấn Khanh**  
-**Trạng thái: ⬜ Chưa hoàn thành**
+**Trạng thái: ✅ Đã hoàn thành**
 
 - **Banner nhận diện nhóm trên trang Cài đặt (`budget/lib/pages/settingsPage.dart`):**
   - Dự kiến tích hợp thẻ banner `TeamBrandingBanner` ở vị trí nổi bật.
@@ -97,7 +97,7 @@ Các nội dung dưới đây là kế hoạch tùy chỉnh của nhóm trên ha
 
 ### ⚙️ 4.2. Tùy Biến Tính Năng Nghiệp Vụ  
 **Người thực hiện: Vũ Hải Đăng**  
-**Trạng thái: ⬜ Chưa hoàn thành**
+**Trạng thái: ✅ Đã hoàn thành**
 
 - **Định dạng tiền tệ mặc định sang VNĐ (`budget/lib/functions.dart`, `currencyFunctions.dart`):**
   - Dự kiến chuyển tiền tệ mặc định sang **VNĐ (Việt Nam Đồng)**.
