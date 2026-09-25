@@ -1,6 +1,4 @@
-from pathlib import Path
-
-readme = """# 📱 ĐỒ ÁN MÔN HỌC: XÂY DỰNG ỨNG DỤNG QUẢN LÝ CHI TIÊU CASHEW
+# 📱 ĐỒ ÁN MÔN HỌC: XÂY DỰNG ỨNG DỤNG QUẢN LÝ CHI TIÊU CASHEW
 
 > **Dự án:** Triển khai, kiểm thử và tùy chỉnh ứng dụng quản lý chi tiêu cá nhân dựa trên mã nguồn mở **Cashew**  
 > **Repository:** [https://github.com/truongnguyen2005/Cashew](https://github.com/truongnguyen2005/Cashew) *(Forked from [jameskokoska/Cashew](https://github.com/jameskokoska/Cashew))*  
