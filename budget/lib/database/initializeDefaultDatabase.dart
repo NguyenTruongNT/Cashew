@@ -45,7 +45,7 @@ TransactionWallet defaultWallet() {
     order: 0,
     currency: getDevicesDefaultCurrencyCode(),
     dateTimeModified: null,
-    decimals: 2,
+    decimals: 0,
     homePageWidgetDisplay: defaultWalletHomePageWidgetDisplay,
   );
 }
