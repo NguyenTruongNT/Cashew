@@ -45,6 +45,74 @@ Cashew is a full-fledged, feature-rich application designed to empower users in 
 
 ---
 
+## 👥 1. Danh Sách Thành Viên & Phân Công Vai Trò
+| STT | Mã Sinh Viên | Họ và Tên | Vai Trò | Trách Nhiệm Chính | Tiền Tố Nhánh Git |
+|:---:|:---:|:---|:---:|:---|:---:|
+| **1** | **2351170625** | **[Nguyễn Văn Trường](https://github.com/truongnguyen2005)** | **Nhóm trưởng** | • Phân tích hệ thống, quản lý dự án & phân công nhiệm vụ<br>• Fork & cấu hình GitHub Repo, quản lý Git flow<br>• Review code, kiểm thử tổng thể phần mềm & giải quyết xung đột<br>• Đóng gói sản phẩm (Build APK), tổng hợp báo cáo | `truong-` |
+| **2** | **2251172386** | **[VŨ TUẤN KHANH](https://github.com/tuankhanh594)** | **Thành viên** | • Cài đặt các gói phụ thuộc (dependencies) và chuẩn hóa môi trường<br>• Nghiên cứu cấu trúc UI/UX và hệ thống Theme (Material You)<br>• Tùy chỉnh giao diện (UI): Cá nhân hóa logo, banner nhóm, màn hình About | `khanh-` |
+| **3** | **2351170580** | **[Vũ Hải Đăng](https://github.com/vdng05)** | **Thành viên** | • Nghiên cứu luồng xử lý dữ liệu và logic nghiệp vụ<br>• Tùy chỉnh tính năng: Tối ưu hóa đơn vị tiền tệ VNĐ, thêm bộ danh mục chi tiêu đặc thù sinh viên<br>• Hỗ trợ viết tài liệu mô tả tính năng mới | `dang-` |
+| **4** | **2351170615** | **[Lý Đình Sơn](https://github.com/lydinhson)** | **Thành viên** | • Xây dựng kịch bản kiểm thử (Test Cases)<br>• Khởi chạy local, thực hiện kiểm thử chức năng cơ bản (CRUD: Thêm/Sửa/Xóa)<br>• Ghi chép nhật ký kiểm thử và chụp ảnh màn hình minh chứng kết quả | `son-` |
+
+---
+
+## 📋 2. Bảng Phân Chia Công Việc Chi Tiết Theo Checklist 5 Mục
+| Mục | Yêu Cầu Checklist | Người Phụ Trách | Người Phối Hợp | Chi Tiết Công Việc & Sản Phẩm Bàn Giao | Tên Nhánh Git | Trạng Thái |
+|:---:|:---|:---:|:---:|:---|:---|:---:|
+| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang repo của nhóm<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn clone mã nguồn | `truong-setup-repo` | ✅ Hoàn thành |
+| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK, Dart SDK tương thích<br>• Chạy `flutter pub get`<br>• Khắc phục lỗi thư viện & chuẩn hóa môi trường local | `khanh-setup-env` | ✅ Hoàn thành |
+| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Lý Đình Sơn** | Vũ Hải Đăng | • Chạy ứng dụng trên Emulator / thiết bị thật<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Chụp ảnh minh chứng lưu tại `screenshots/crud/` | `son-test-crud` | 🔄 Đang hoàn thiện |
+| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Vũ Tuấn Khanh** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Khanh):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi banner nhận diện.<br>• **Tính năng (Đăng):** Bổ sung danh mục sinh viên, định dạng tiền VNĐ.<br>• Hoàn thành code, review và merge vào `main`. | `khanh-custom-ui`<br>`dang-custom-feature` | ✅ Hoàn thành |
+| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Lý Đình Sơn, Vũ Hải Đăng | • Đóng gói ứng dụng thành file APK release<br>• Kiểm tra lại các quy trình chất lượng (QA)<br>• Tổng hợp ảnh chụp màn hình và nộp link GitHub | `truong-build-release` | 🔄 Đang triển khai |
+
+---
+
+## 🌿 3. Quy Định Đặt Tên Nhánh Git & Quy Trình Push Code (Git Workflow)
+
+> ⚠️ **QUY TẮC BẮT BUỘC DÀNH CHO TẤT CẢ THÀNH VIÊN:**
+> - **TUYỆT ĐỐI KHÔNG** commit hoặc push code trực tiếp lên nhánh `main`.
+> - Mỗi thành viên khi làm bất kỳ nhiệm vụ nào **BẮT BUỘC PHẢI TẠO MỘT NHÁNH MỚI** chứa cú pháp: **`<tên_thành_viên>-<tên_chức_năng>`**.
+> - Sau khi hoàn thành, tạo **Pull Request (PR)** để Nhóm trưởng review, giải quyết xung đột (nếu có) và merge vào `main`.
+
+### 📌 Bảng Quy Định Tên Nhánh Chi Tiết Cho Từng Thành Viên:
+
+| Thành Viên | Tiền Tố | Tên Nhánh Khi Push Code | Mục Đích / Chức Năng Phụ Trách | Trạng Thái Nhánh |
+|---|:---:|:---|:---|:---:|
+| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo, review code<br>• Đóng gói APK và hoàn thiện tài liệu nộp bài | ✅ Đã merge<br>🔄 Đang triển khai |
+| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-env`<br>`khanh-custom-ui` | • Chuẩn hóa môi trường local<br>• Tùy chỉnh giao diện (UI), Material You Design | ✅ Đã merge |
+| **Vũ Hải Đăng** | `dang-` | `dang-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định<br>• Thêm danh mục chi tiêu sinh viên | ✅ Đã merge |
+| **Lý Đình Sơn** | `son-` | `son-test-crud` | • Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch | 🔄 Đang thực hiện |
+
+---
+
+### 🚀 Hướng Dẫn Các Bước Tạo Nhánh & Push Code Chi Tiết:
+
+Mỗi khi bắt đầu làm một tính năng, thành viên thực hiện tuần tự theo các lệnh sau trong terminal:
+
+```bash
+# Bước 1: Chuyển về nhánh main và kéo code mới nhất về máy
+git checkout main
+git pull origin main
+
+# Bước 2: Tạo nhánh mới với quy tắc: <tên>-<tên-chức-năng>
+git checkout -b son-test-crud
+
+# Bước 3: Thực hiện code, chỉnh sửa và kiểm thử ứng dụng chạy ổn định ở local
+
+# Bước 4: Kiểm tra các file đã thay đổi
+git status
+
+# Bước 5: Thêm file và commit với cú pháp rõ ràng
+git add .
+git commit -m "[Son] Kiem thu chuc nang CRUD va chup anh minh chung"
+
+# Bước 6: Push nhánh mới lên remote GitHub
+git push origin son-test-crud
+
+# Bước 7: Tạo Pull Request (PR) trên GitHub để Nhóm trưởng review và merge vào main
+```
+
+---
+
 ## Features
 
 <a href="https://www.youtube.com/watch?v=Oar9pkc7BSc&t=235s">
@@ -181,7 +249,7 @@ The translations are available here: https://docs.google.com/spreadsheets/d/1QQq
 
 ### Pull Requests and Contributions
 
-Unfortunately, I am currently not accepting contributions due to licensing and credits. Since this application turns some profits, I want to avoid any muddy water when it comes to compensation for contributions. You are free to submit an [issue](https://github.com/jameskokoska/Cashew/issues) and I can consider it!
+- **Pull Request (PR)** để Nhóm trưởng review, giải quyết xung đột (nếu có) và merge vào `main`.
 
 ### Android Release
 
