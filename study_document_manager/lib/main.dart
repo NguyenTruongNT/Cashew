@@ -1,38 +1,35 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 
 import 'colors.dart';
 import 'database/app_database.dart';
 import 'database/databaseGlobal.dart';
 import 'firebase_options.dart';
-import 'pages/home_page.dart';
-import 'struct/firebase_platform_support.dart';
+
+import 'pages/auth_gate.dart';
+
 
 // =====================================================================
-// [KIẾN TRÚC CASHEW - ĐIỂM KHỞI CHẠY ỨNG DỤNG (ENTRY POINT)]
-// File: lib/main.dart
-// Đề tài: TH1 - Ứng dụng Quản lý Tài liệu Học tập theo Kiến trúc Cashew
-// Mô tả: Khởi tạo cơ sở dữ liệu SQLite, thiết lập giao diện Theme (Light/Dark),
-// và khởi chạy màn hình chính HomePage.
+// ĐIỂM KHỞI CHẠY ỨNG DỤNG QUẢN LÝ TÀI LIỆU
+//
+// - Khởi tạo Firebase.
+// - Khởi tạo SQLite.
+// - Theo dõi trạng thái đăng nhập.
+// - Chuyển giữa LoginPage và HomePage.
 // =====================================================================
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
 
-  final firebaseSupported = kIsWeb ||
-      defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS;
-  if (firebaseSupported) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  }
 
-  // Khởi tạo Database theo quy chuẩn Singleton của Cashew
   database = AppDatabase();
   if (firebaseInitialized) {
     await database.setActiveOwner(FirebaseAuth.instance.currentUser?.uid);
@@ -84,12 +81,12 @@ class _StudyDocumentAppState extends State<StudyDocumentApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Quản Lý Tài Liệu Học Tập (Kiến Trúc Cashew)',
+      title: 'Quản Lý Tài Liệu Học Tập',
       debugShowCheckedModeBanner: false,
       theme: getLightTheme(),
       darkTheme: getDarkTheme(),
       themeMode: ThemeMode.system,
-      home: const HomePage(),
+      home: const AuthGate(),
     );
   }
 }
