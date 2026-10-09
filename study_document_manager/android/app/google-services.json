@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "747752646321",
+    "project_id": "cashew-study-docs-3afed",
+    "storage_bucket": "cashew-study-docs-3afed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:747752646321:android:1f3a908c3decbe8d922490",
+        "android_client_info": {
+          "package_name": "vn.edu.cashew.study_document_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSfbY1A54zL9tPg1sTfnjEGMBlvfrGJ3w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
