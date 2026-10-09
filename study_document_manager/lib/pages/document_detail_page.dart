@@ -1,3 +1,4 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
+import '../struct/firebase_storage_service.dart';
 import '../struct/formatters.dart';
 import '../struct/models/document_models.dart';
 import '../widgets/confirm_delete_dialog.dart';
@@ -85,10 +87,24 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       builder: (ctx) => ConfirmDeleteDialog(
         documentTitle: _document!.title,
         onConfirm: () async {
-          await DocumentService.deleteDocument(_document!.id);
-          if (mounted) {
-            openSnackbar(context, message: 'Đã xóa tài liệu thành công!');
-            Navigator.pop(context, true);
+          try {
+            await DocumentService.deleteDocument(_document!.id);
+            if (mounted) {
+              openSnackbar(context, message: 'Đã xóa tài liệu thành công!');
+              Navigator.pop(context, true);
+            }
+          } on FirebaseException catch (error) {
+            if (mounted) {
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+                isError: true,
+              );
+            }
+          } catch (error) {
+            if (mounted) {
+              openSnackbar(context, message: 'Lỗi khi xóa tài liệu: $error', isError: true);
+            }
           }
         },
       ),
@@ -134,6 +150,21 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         openSnackbar(
           context,
           message: 'Nền tảng hiện tại không hỗ trợ mở đường dẫn tệp này.',
+        );
+      }
+    }
+  }
+
+  Future<void> _openCloudDocument(String storagePath) async {
+    try {
+      final url = await FirebaseStorageService.instance.downloadUrl(storagePath);
+      await _openDocumentLink(url);
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        openSnackbar(
+          context,
+          message: 'Không thể tải tệp Firebase: ${error.message ?? error.code}',
+          isError: true,
         );
       }
     }
@@ -413,7 +444,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           const SizedBox(height: 12),
 
           // Liên kết tài liệu / File đính kèm
-          if (doc.fileUrl.isNotEmpty) ...[
+          if (doc.fileUrl.isNotEmpty || doc.storagePath != null) ...[
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -458,9 +489,13 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: InkWell(
-                              onTap: () => _openDocumentLink(doc.fileUrl),
+                              onTap: doc.storagePath != null
+                                  ? () => _openCloudDocument(doc.storagePath!)
+                                  : () => _openDocumentLink(doc.fileUrl),
                               child: Text(
-                                doc.fileUrl,
+                                doc.storagePath == null
+                                    ? doc.fileUrl
+                                    : doc.storagePath!.split('/').last,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Theme.of(context).colorScheme.primary,
@@ -473,14 +508,17 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                            onPressed: () => _openDocumentLink(doc.fileUrl),
+                            onPressed: doc.storagePath != null
+                                ? () => _openCloudDocument(doc.storagePath!)
+                                : () => _openDocumentLink(doc.fileUrl),
                             tooltip: 'Mở tài liệu',
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.copy_rounded, size: 18),
-                            onPressed: () => _copyLink(doc.fileUrl),
-                            tooltip: 'Sao chép liên kết',
-                          ),
+                          if (doc.storagePath == null)
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 18),
+                              onPressed: () => _copyLink(doc.fileUrl),
+                              tooltip: 'Sao chép liên kết',
+                            ),
                         ],
                       ),
                     ),

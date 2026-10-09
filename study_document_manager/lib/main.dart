@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'colors.dart';
 import 'database/app_database.dart';
 import 'database/databaseGlobal.dart';
+import 'firebase_options.dart';
 import 'pages/home_page.dart';
 
 // =====================================================================
@@ -14,6 +17,15 @@ import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final firebaseSupported = kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+  if (firebaseSupported) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // Khởi tạo Database theo quy chuẩn Singleton của Cashew
   database = AppDatabase();
