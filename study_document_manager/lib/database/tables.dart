@@ -47,6 +47,14 @@ class DocumentTable {
   static const String colCreatedDate = 'created_date';
   static const String colUpdatedDate = 'updated_date';
 
+  // --- Các cột phục vụ Offline Sync (Local Cache + Cloud) ---
+  static const String colSyncStatus = 'sync_status';   // 'synced','pendingCreate','pendingUpdate','pendingDelete'
+  static const String colChecksum = 'checksum';        // Checksum MD5/SHA-256 của nội dung tệp
+  static const String colFileSize = 'file_size';       // Kích thước tệp (byte)
+  static const String colLocalFilePath = 'local_file_path'; // Đường dẫn tệp trong Local Cache
+  static const String colRemoteVersion = 'remote_version';  // Phiên bản phía Cloud (LWW)
+  static const String colLastSyncedAt = 'last_synced_at';   // Thời điểm đồng bộ gần nhất
+
   /// Câu lệnh SQL tạo bảng Tài liệu
   static const String createTableSql = '''
     CREATE TABLE IF NOT EXISTS $tableName (
@@ -63,7 +71,68 @@ class DocumentTable {
       $colDeadline INTEGER,
       $colCreatedDate INTEGER NOT NULL,
       $colUpdatedDate INTEGER NOT NULL,
+      $colSyncStatus TEXT NOT NULL DEFAULT 'synced',
+      $colChecksum TEXT,
+      $colFileSize INTEGER,
+      $colLocalFilePath TEXT,
+      $colRemoteVersion INTEGER NOT NULL DEFAULT 0,
+      $colLastSyncedAt INTEGER,
       FOREIGN KEY ($colSubjectId) REFERENCES ${SubjectTable.tableName} (${SubjectTable.colId}) ON DELETE CASCADE
+    );
+  ''';
+
+  /// Danh sách cột sync bổ sung cho bảng documents ở phiên bản schema 2
+  /// (dùng cho câu lệnh ALTER TABLE khi nâng cấp từ v1 lên v2).
+  static const List<String> syncColumnsSql = [
+    "ALTER TABLE $tableName ADD COLUMN $colSyncStatus TEXT NOT NULL DEFAULT 'synced'",
+    "ALTER TABLE $tableName ADD COLUMN $colChecksum TEXT",
+    "ALTER TABLE $tableName ADD COLUMN $colFileSize INTEGER",
+    "ALTER TABLE $tableName ADD COLUMN $colLocalFilePath TEXT",
+    "ALTER TABLE $tableName ADD COLUMN $colRemoteVersion INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE $tableName ADD COLUMN $colLastSyncedAt INTEGER",
+  ];
+}
+
+/// Định nghĩa bảng Nhật ký xóa (delete_logs) phục vụ đồng bộ tombstone.
+///
+/// Mỗi lần người dùng xóa tài liệu khi offline, một bản ghi tombstone được
+/// tạo ra để khi có mạng trở lại hệ thống biết cần xóa tài liệu/tệp tương ứng
+/// trên Cloud, tránh việc đồng bộ ngược làm "hồi sinh" dữ liệu đã xóa.
+class DeleteLogTable {
+  static const String tableName = 'delete_logs';
+
+  static const String colId = 'id';
+  static const String colDocumentId = 'document_id';
+  static const String colDeletedAt = 'deleted_at';
+  static const String colDeviceId = 'device_id';
+  static const String colSynced = 'synced';                 // 0: chờ đẩy, 1: đã đồng bộ
+  static const String colChecksum = 'checksum';             // Checksum tệp tại thời điểm xóa
+  static const String colRemotePurgedAt = 'remote_purged_at';
+
+  static const String createTableSql = '''
+    CREATE TABLE IF NOT EXISTS $tableName (
+      $colId TEXT PRIMARY KEY,
+      $colDocumentId TEXT NOT NULL,
+      $colDeletedAt INTEGER NOT NULL,
+      $colDeviceId TEXT,
+      $colSynced INTEGER NOT NULL DEFAULT 0,
+      $colChecksum TEXT,
+      $colRemotePurgedAt INTEGER
+    );
+  ''';
+}
+
+/// Bảng metadata nội bộ cho đồng bộ (mốc thời gian kéo dữ liệu gần nhất...).
+class SyncMetaTable {
+  static const String tableName = 'sync_meta';
+
+  static const String colKey = 'key';
+  static const String colValue = 'value';
+
+  static const String createTableSql = '''
+    CREATE TABLE IF NOT EXISTS $tableName (
+      $colKey TEXT PRIMARY KEY,
+      $colValue TEXT
     );
   ''';
 }

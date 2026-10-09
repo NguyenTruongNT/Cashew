@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../colors.dart';
+import '../sync/sync_status.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG NGHIỆP VỤ: ĐỐI TƯỢNG VÀ MÔ HÌNH DỮ LIỆU (MODELS)]
@@ -204,6 +205,25 @@ class DocumentModel {
   final DateTime createdDate;
   final DateTime updatedDate;
 
+  // --- Trạng thái & metadata phục vụ Offline Sync ---
+  /// Trạng thái đồng bộ so với Cloud (mặc định: đã đồng bộ).
+  final SyncStatus syncStatus;
+
+  /// Checksum MD5/SHA-256 của nội dung tệp đính kèm.
+  final String? checksum;
+
+  /// Kích thước tệp (byte).
+  final int? fileSize;
+
+  /// Đường dẫn tệp trong Local Cache (khi tải offline).
+  final String? localFilePath;
+
+  /// Phiên bản phía Cloud phục vụ giải quyết xung đột Last-Write-Wins.
+  final int remoteVersion;
+
+  /// Thời điểm đồng bộ gần nhất.
+  final DateTime? lastSyncedAt;
+
   DocumentModel({
     required this.id,
     required this.title,
@@ -218,7 +238,19 @@ class DocumentModel {
     this.deadline,
     required this.createdDate,
     required this.updatedDate,
+    this.syncStatus = SyncStatus.synced,
+    this.checksum,
+    this.fileSize,
+    this.localFilePath,
+    this.remoteVersion = 0,
+    this.lastSyncedAt,
   });
+
+  /// Tài liệu đang có thay đổi cục bộ chờ đồng bộ lên Cloud hay không.
+  bool get isPendingSync => syncStatus.isPending;
+
+  /// Có tệp đính kèm đã được băm để kiểm tra toàn vẹn hay không.
+  bool get hasChecksum => checksum != null && checksum!.isNotEmpty;
 
   /// Chuyển đổi sang Map để lưu trữ trong SQLite
   Map<String, dynamic> toMap() {
@@ -236,6 +268,12 @@ class DocumentModel {
       'deadline': deadline?.millisecondsSinceEpoch,
       'created_date': createdDate.millisecondsSinceEpoch,
       'updated_date': updatedDate.millisecondsSinceEpoch,
+      'sync_status': syncStatus.nameString,
+      'checksum': checksum,
+      'file_size': fileSize,
+      'local_file_path': localFilePath,
+      'remote_version': remoteVersion,
+      'last_synced_at': lastSyncedAt?.millisecondsSinceEpoch,
     };
   }
 
@@ -262,6 +300,14 @@ class DocumentModel {
           : null,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
       updatedDate: DateTime.fromMillisecondsSinceEpoch(map['updated_date'] as int),
+      syncStatus: SyncStatusExtension.fromString(map['sync_status'] as String?),
+      checksum: map['checksum'] as String?,
+      fileSize: map['file_size'] as int?,
+      localFilePath: map['local_file_path'] as String?,
+      remoteVersion: map['remote_version'] as int? ?? 0,
+      lastSyncedAt: map['last_synced_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['last_synced_at'] as int)
+          : null,
     );
   }
 
@@ -280,6 +326,12 @@ class DocumentModel {
     DateTime? deadline,
     DateTime? createdDate,
     DateTime? updatedDate,
+    SyncStatus? syncStatus,
+    String? checksum,
+    int? fileSize,
+    String? localFilePath,
+    int? remoteVersion,
+    DateTime? lastSyncedAt,
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -295,6 +347,48 @@ class DocumentModel {
       deadline: deadline ?? this.deadline,
       createdDate: createdDate ?? this.createdDate,
       updatedDate: updatedDate ?? DateTime.now(),
+      syncStatus: syncStatus ?? this.syncStatus,
+      checksum: checksum ?? this.checksum,
+      fileSize: fileSize ?? this.fileSize,
+      localFilePath: localFilePath ?? this.localFilePath,
+      remoteVersion: remoteVersion ?? this.remoteVersion,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    );
+  }
+
+  /// Sao chép chỉ các trường thuộc Offline Sync, **giữ nguyên** `updatedDate`.
+  ///
+  /// Khác với [copyWith] (luôn làm mới `updatedDate`), hàm này dùng cho các
+  /// thao tác kỹ thuật (đánh dấu đã đồng bộ, ghi checksum...) không được phép
+  /// làm sai lệch mốc thời gian Last-Write-Wins.
+  DocumentModel copyWithSync({
+    SyncStatus? syncStatus,
+    String? checksum,
+    int? fileSize,
+    String? localFilePath,
+    int? remoteVersion,
+    DateTime? lastSyncedAt,
+  }) {
+    return DocumentModel(
+      id: id,
+      title: title,
+      subjectId: subjectId,
+      type: type,
+      notes: notes,
+      fileUrl: fileUrl,
+      tags: tags,
+      status: status,
+      priority: priority,
+      isFavorite: isFavorite,
+      deadline: deadline,
+      createdDate: createdDate,
+      updatedDate: updatedDate,
+      syncStatus: syncStatus ?? this.syncStatus,
+      checksum: checksum ?? this.checksum,
+      fileSize: fileSize ?? this.fileSize,
+      localFilePath: localFilePath ?? this.localFilePath,
+      remoteVersion: remoteVersion ?? this.remoteVersion,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
   }
 }
