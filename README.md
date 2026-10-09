@@ -1,31 +1,139 @@
+
+# ☁️ BÀI TẬP: PHÂN TÍCH VÀ LẬP PHƯƠNG ÁN TÍCH HỢP CLOUD CHO HỆ THỐNG QUẢN LÝ TÀI LIỆU (DMS)
+
+> 📌 **Nhiệm vụ đề bài:**  
+> Phân tích chi tiết các thành phần hiện có của một ứng dụng Quản lý tài liệu (Document Management System - DMS) để xác định khả năng chuyển đổi. Đề xuất một phương án tích hợp điện toán đám mây (Cloud) nhằm tối ưu hóa khả năng lưu trữ, bảo mật và truy cập từ xa. Bài làm thể hiện sự so sánh giữa mô hình truyền thống và mô hình sau khi tích hợp Cloud.  
+> 📑 **Báo cáo kỹ thuật chi tiết:** [`BAO_CAO_TICH_HOP_CLOUD_DMS.docx`](BAO_CAO_TICH_HOP_CLOUD_DMS.docx) | [`BAO_CAO_TICH_HOP_CLOUD_DMS.md`](BAO_CAO_TICH_HOP_CLOUD_DMS.md)  
+> 📊 **Slide thuyết trình báo cáo:** [`Slide_Tich_Hop_Cloud_Firebase_DMS.pptx`](Slide_Tich_Hop_Cloud_Firebase_DMS.pptx)  
+> 👥 **Đơn vị thực hiện:** **Nhóm 12** (Lớp 65KTPM — Khoa CNTT — Đại học Thủy Lợi)
+
+### 📋 1. Bảng Đối Soát Hoàn Thành Checklist 7 Mục Theo Yêu Cầu
+
+| STT | Mục Checklist Yêu Cầu | Kết Quả Triển Khai Trong Dự Án & Báo Cáo | Trạng Thái |
+|:---:|:---|:---|:---:|
+| **1** | **Liệt kê và phân tích các thành phần cốt lõi của ứng dụng Quản lý tài liệu** | Phân tích chi tiết 4 phân hệ: **Frontend** (Flutter Multiplatform / Web SPA), **Backend** (Stateless RESTful API), **Metadata Database** (RDBMS: PostgreSQL/SQLite), **File Storage** (Lưu trữ tệp nhị phân). Đánh giá tính sẵn sàng chuyển đổi Cloud đạt 85-95%. | Chưa hoàn thành |
+| **2** | **Xác định các điểm nghẽn & hạn chế trên hạ tầng truyền thống** | Chỉ rõ 5 điểm nghẽn nghiêm trọng: Giới hạn dung lượng & nghẽn I/O đĩa cứng (Disk Bottleneck), Khó khăn khi mở rộng (Scale-up trần vật lý), Điểm chết đơn lẻ (SPOF) & VPN truy cập từ xa cồng kềnh, Rủi ro Thảm họa/Ransomware (RPO/RTO lớn), Gánh nặng chi phí CapEx/OpEx. | Chưa hoàn thành |
+| **3** | **Lựa chọn mô hình Cloud phù hợp & dịch vụ cụ thể** | So sánh đa tiêu chí giữa Public, Private và Hybrid Cloud. Luận cứ lựa chọn **Public Cloud** với hệ sinh thái **AWS S3 / Google Cloud Storage** nhờ độ bền 11 số 9 (99.999999999%), mạng phân phối toàn cầu CDN, chi phí Pay-As-You-Go linh hoạt. | Chưa hoàn thành |
+| **4** | **Thiết kế sơ đồ kiến trúc Cloud & mô tả luồng dữ liệu** | Xây dựng sơ đồ kiến trúc tổng thể [`scripts/output/cloud_dms_architecture.png`](scripts/output/cloud_dms_architecture.png) và quy trình **Direct Upload Pattern** bypass Backend API; xử lý phi đồng bộ qua Event-Driven (S3 Event -> SQS -> Lambda/Cloud Function sinh Thumbnail/OCR). | Chưa hoàn thành |
+| **5** | **Đánh giá tác động về Bảo mật, Chi phí và Hiệu suất** | • **Bảo mật:** Mã hóa At-Rest (SSE-KMS AES-256) & In-Transit (TLS 1.3), Pre-signed URL có thời hạn, chống ransomware với Object Lock.<br>• **Chi phí:** Chuyển đổi CapEx sang OpEx, tự động hóa vòng đời dữ liệu S3 Lifecycle Rules tiết kiệm 70-90% chi phí lưu trữ dài hạn.<br>• **Hiệu suất:** Tốc độ tải vượt trội qua CloudFront CDN Edge Caching, giảm 75% độ trễ mạng. | Chưa hoàn thành |
+| **6** | **Tích hợp Firebase: Google Sign-In & Cloud Storage cho Flutter** | Nghiên cứu và chuẩn hóa giải pháp tích hợp Firebase theo tài liệu chính thức [Firebase Flutter Setup](https://firebase.google.com/docs/flutter/setup?hl=vi): Xác thực một chạm OAuth 2.0 bằng Google Sign-In (`firebase_auth`, `google_sign_in`) và lưu trữ tệp tin trên `firebase_storage` với cơ chế Resumable Upload và Security Rules phân quyền. | Chưa hoàn thành |
+| **7** | **Slide báo cáo & Bảng phân chia công việc nhóm** | Thiết kế bộ Slide thuyết trình 11 trang chuẩn 16:9 [`Slide_Tich_Hop_Cloud_Firebase_DMS.pptx`](Slide_Tich_Hop_Cloud_Firebase_DMS.pptx), cập nhật tài liệu README.MD và phân công chi tiết công việc cho cả phần Báo cáo phân tích và phần Lập trình tích hợp tiếp theo. | Chưa hoàn thành |
+
+---
+
+### 👥 2. Bảng Phân Chia Công Việc: Bài Tập Phân Tích & Lập Phương Án Tích Hợp Cloud DMS
+
+Nhóm 16 đã phân công cụ thể từng đầu việc cho 4 thành viên để hoàn thành toàn bộ bài tập phân tích kiến trúc và đề xuất phương án:
+
+| STT | Thành Viên | Vai Trò | Nhiệm Vụ Phân Tích & Xây Dựng Báo Cáo | Sản Phẩm Bàn Giao | Trạng Thái |
+|:---:|:---|:---:|:---|:---|:---:|
+| **1** | **Nguyễn Văn Trường** | **Nhóm trưởng** | • Chủ trì nghiên cứu kiến trúc tổng thể DMS.<br>• Thiết kế Sơ đồ kiến trúc Cloud tích hợp (AWS & Firebase) và quy trình luồng dữ liệu Direct Upload Pattern.<br>• So sánh các mô hình Public, Private, Hybrid Cloud và lựa chọn dịch vụ Object Storage.<br>• Tổng hợp, hiệu đính và xuất bản tệp báo cáo kỹ thuật [`BAO_CAO_TICH_HOP_CLOUD_DMS.docx`](BAO_CAO_TICH_HOP_CLOUD_DMS.docx) và Markdown. | Sơ đồ kiến trúc, Báo cáo DOCX & MD, Quản trị Git | Chưa hoàn thành |
+| **2** | **Vũ Tuấn Khanh** | **Thành viên** | • Liệt kê và phân tích chi tiết 4 thành phần cốt lõi của ứng dụng Quản lý tài liệu (Frontend, Backend, Database, File Storage).<br>• Đánh giá tính sẵn sàng chuyển đổi Cloud (Cloud-readiness) của từng thành phần.<br>• So sánh các nền tảng Cloud Storage hàng đầu: Amazon S3, Google Cloud Storage, Azure Blob Storage.<br>• Soạn thảo nội dung mục 1 và mục 3 trong báo cáo. | Nội dung phân tích thành phần & bảng so sánh dịch vụ | Chưa hoàn thành |
+| **3** | **Vũ Hải Đăng** | **Thành viên** | • Khảo sát và chỉ ra 5 điểm nghẽn nghiêm trọng của hệ thống DMS khi vận hành trên hạ tầng On-Premises truyền thống.<br>• Thiết kế toàn bộ Slide thuyết trình 11 trang chuẩn 16:9 [`Slide_Tich_Hop_Cloud_Firebase_DMS.pptx`](Slide_Tich_Hop_Cloud_Firebase_DMS.pptx).<br>• Trực quan hóa bảng đối chiếu 8 tiêu chí so sánh giữa mô hình Truyền thống và mô hình Cloud. | Bộ Slide thuyết trình PPTX, Phân tích 5 điểm nghẽn | Chưa hoàn thành |
+| **4** | **Lý Đình Sơn** | **Thành viên** | • Đánh giá chuyên sâu 3 trụ cột tác động sau chuyển đổi: An toàn Bảo mật, Chi phí vận hành (TCO 3 năm) và Hiệu suất.<br>• Xây dựng biểu đồ phân tích bài toán tài chính TCO và tính toán tỷ lệ tiết kiệm chi phí lưu trữ theo vòng đời (S3 Lifecycle).<br>• Phác thảo lộ trình chuyển đổi 5 giai đoạn (Migration Roadmap). | Phân tích TCO, Biểu đồ chi phí, Lộ trình 5 bước | Chưa hoàn thành |
+
+---
+
+### 🔥 3. Tìm Hiểu Giải Pháp Firebase (Google Sign-In & Cloud Storage)
+
+Theo tài liệu chính thức của Google tại [Đang cập nhật](https://firebase.google.com/...), giải pháp Firebase đem lại khả năng tích hợp vượt trội cho ứng dụng Flutter:
+
+```mermaid
+flowchart TD
+    subgraph Client["Flutter Multiplatform App"]
+        UI["UI / View Layer"]
+        AuthProv["Auth State Provider"]
+        StorageProv["Storage Service Provider"]
+    end
+
+    subgraph FirebaseCloud["Hệ Sinh Thái Google Cloud & Firebase"]
+        GoogleAuth["Firebase Authentication\n(Google Sign-In OAuth 2.0)"]
+        FStorage["Cloud Storage for Firebase\n(Google Cloud Storage Bucket)"]
+        SecRules["Firebase Security Rules\n(RBAC / UID Validation)"]
+    end
+
+    UI -->|1. Đăng nhập Google 1 chạm| AuthProv
+    AuthProv -->|2. Lấy GoogleCredential & ID Token| GoogleAuth
+    GoogleAuth -->|3. Trả về FirebaseUser (UID, Email, Avatar)| AuthProv
+    UI -->|4. Tải lên tệp tài liệu (PDF, DOCX)| StorageProv
+    StorageProv -->|5. Đẩy tệp kèm Auth Token| FStorage
+    FStorage -->|6. Kiểm tra quyền sở hữu| SecRules
+    FStorage -->|7. Trả về Download URL / Metadata| StorageProv
+```
+
+#### Các Bước Setup Chuẩn Hóa Với Tài Khoản Nhóm 16:
+1. **Bước 1: Khởi tạo Project trên Firebase Console**
+   - Đăng nhập [Firebase Console](https://console.firebase.google.com/) bằng tài khoản của nhóm.
+   - Chọn **Add project** -> Đặt tên dự án: `cashew-study-docs` -> Bật Google Analytics.
+2. **Bước 2: Cài đặt công cụ dòng lệnh (CLI)**
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   dart pub global activate flutterfire_cli
+   ```
+3. **Bước 3: Cấu hình tự động ứng dụng Flutter với FlutterFire**
+   ```bash
+   # Đứng tại thư mục ứng dụng Flutter
+   flutterfire configure --project=cashew-study-docs
+   ```
+   *Lệnh này sẽ tự động đăng ký ứng dụng Android, iOS, Web và sinh mã khởi tạo `lib/firebase_options.dart`.*
+4. **Bước 4: Bổ sung dependencies vào `pubspec.yaml`**
+   ```yaml
+   dependencies:
+     flutter:
+       sdk: flutter
+     firebase_core: ^3.6.0
+     firebase_auth: ^5.3.1
+     google_sign_in: ^6.2.1
+     firebase_storage: ^12.3.2
+   ```
+5. **Bước 5: Kích hoạt dịch vụ trên Firebase Console**
+   - **Authentication:** Bật phương thức đăng nhập **Google**, cấu hình SHA-1 fingerprint từ máy phát triển Android.
+   - **Storage:** Bật Cloud Storage, chọn vị trí đặt Bucket (khuyến nghị `asia-southeast1` Singapore để độ trễ thấp nhất cho người dùng Việt Nam), cấu hình Security Rules bảo vệ quyền sở hữu tệp.
+
+---
+
+### 🚀 4. Kế Hoạch & Bảng Phân Chia Công Việc Lập Trình Bài Tập Tiếp Theo
+
+Nhóm 16 thống nhất quy trình Git Flow: Mỗi thành viên tạo nhánh riêng `<tiền_tố>-<tên_chức_năng>`, hoàn thiện và tạo Pull Request (PR) để Nhóm trưởng review trước khi merge vào `main`.
+
+| STT | Thành Viên | Vai Trò | Nhiệm Vụ Kỹ Thuật Phụ Trách | Sản Phẩm Bàn Giao | Tên Nhánh Git | Trạng Thái |
+|:---:|:---|:---:|:---|:---|:---:|:---:|
+| **1** | **Nguyễn Văn Trường** | **Nhóm trưởng** | • Khởi tạo Firebase Project & phân quyền nhóm.<br>• Cấu hình dịch vụ Firebase Storage, thiết lập Security Rules.<br>• Triển khai tầng lưu trữ `FirebaseStorageService` (Upload/Download file, sinh Download URL).<br>• Quản trị Git Flow, review code PR và quản lý tài liệu nộp bài. | [`FirebaseStorageService`](study_docs_app/lib/struct/firebase_storage_service.dart), [`storage.rules`](storage.rules), [`Hướng dẫn kỹ thuật`](HUONG_DAN_CAU_HINH_FIREBASE_STORAGE.md) | `truong-cloud-storage` |  **Chưa hoàn thành** |
+| **2** | **Vũ Tuấn Khanh** | **Thành viên** | • Cài đặt và tích hợp `firebase_auth` & `google_sign_in`.<br>• Triển khai luồng xác thực Google Sign-In một chạm với tài khoản trường sinh viên.<br>• Xây dựng màn hình đăng nhập (Login View) và quản lý Auth State.<br>• Viết kịch bản kiểm thử luồng đăng nhập/đăng xuất và ghi log kiểm thử. | [`LoginPage`](study_docs_app/lib/pages/login_page.dart), [`GoogleAuthService`](study_docs_app/lib/struct/google_auth_service.dart), [`Kịch bản kiểm thử`](KICH_BAN_KIEM_THU_GOOGLE_AUTH.md) | `khanh-google-auth` | **Chưa hoàn thành** |
+| **3** | **Vũ Hải Đăng** | **Thành viên** | • Thiết kế giao diện thông tin người dùng (Avatar, Email, Tên hiển thị sau đăng nhập).<br>• Xây dựng thanh tiến trình tải tệp (Upload / Download Progress Bar).<br>• Thiết kế chỉ báo trạng thái Cloud (Cloud Sync Badge, Offline Mode Indicator).<br>• Tối ưu hóa trải nghiệm giao diện người dùng (UI/UX) và chụp ảnh minh chứng. | Giao diện User Profile, Progress UI, Cloud Badges | `dang-cloud-ui` | **Chưa hoàn thành** |
+| **4** | **Lý Đình Sơn** | **Thành viên** | • Xây dựng cơ chế Local Cache kết hợp Cloud: Lưu trữ cục bộ khi Offline.<br>• Tự động đồng bộ tài liệu hai chiều khi kết nối mạng được phục hồi.<br>• Kiểm tra tính toàn vẹn tệp (Checksum MD5/SHA-256) và cập nhật bảng `delete_logs`.<br>• Kiểm thử hiệu năng truyền tải tệp khi mạng yếu. | Cơ chế Offline-First Cache, đồng bộ dữ liệu hai chiều | `son-offline-sync` | **Chưa hoàn thành** |
+
+---
+
 # 📱 ĐỒ ÁN MÔN HỌC: XÂY DỰNG ỨNG DỤNG QUẢN LÝ CHI TIÊU CASHEW
 
 > **Dự án:** Triển khai, kiểm thử và tùy chỉnh ứng dụng quản lý chi tiêu cá nhân dựa trên mã nguồn mở **Cashew**  
-> **Repository:** [https://github.com/truongnguyen2005/Cashew](https://github.com/truongnguyen2005/Cashew) *(Forked from [jameskokoska/Cashew](https://github.com/jameskokoska/Cashew))*  
+> **Repository:** [https://github.com/NguyenTruongNT/Cashew](https://github.com/NguyenTruongNT/Cashew) *(Forked from [jameskokoska/Cashew](https://github.com/jameskokoska/Cashew))*  
 > **Công nghệ sử dụng:** Flutter, Dart, SQLite (Drift), Material You Design
 
 ---
 
 ## 👥 1. Danh Sách Thành Viên & Phân Công Vai Trò
 
-| STT | Mã Sinh Viên | Họ và Tên | Vai Trò | Trách Nhiệm Chính | Tiền Tố Nhánh Git |
+| STT | Mã Sinh Viên | Họ và Tên | Vai Trò | Trách Nhiệm Chính | Tiền Tố Nhánh Git (Tên) |
 |:---:|:---:|:---|:---:|:---|:---:|
-| **1** | **2351170625** | **[Nguyễn Văn Trường](https://github.com/truongnguyen2005)** | **Nhóm trưởng** | • Phân tích hệ thống, quản lý dự án & phân công nhiệm vụ<br>• Fork & cấu hình GitHub Repo, quản lý Git flow<br>• Review code, kiểm thử tổng thể phần mềm & giải quyết xung đột<br>• Đóng gói sản phẩm (Build APK), tổng hợp báo cáo | `truong-` |
-| **2** | **2251172386** | **[Vũ Tuấn Khanh](https://github.com/tuankhanh594)** | **Thành viên** | • Cài đặt các gói phụ thuộc (dependencies) và chuẩn hóa môi trường<br>• Nghiên cứu cấu trúc UI/UX và hệ thống Theme (Material You)<br>• Tùy chỉnh giao diện (UI): Cá nhân hóa logo, banner nhóm, màn hình About | `khanh-` |
-| **3** | **2351170580** | **[Vũ Hải Đăng](https://github.com/vdng05)** | **Thành viên** | • Nghiên cứu luồng xử lý dữ liệu và logic nghiệp vụ<br>• Tùy chỉnh tính năng: Tối ưu hóa đơn vị tiền tệ VNĐ, thêm bộ danh mục chi tiêu đặc thù sinh viên<br>• Hỗ trợ viết tài liệu mô tả tính năng mới | `dang-` |
-| **4** | **2351170615** | **[Lý Đình Sơn](https://github.com/lydinhson)** | **Thành viên** | • Xây dựng kịch bản kiểm thử (Test Cases)<br>• Khởi chạy local, thực hiện kiểm thử chức năng cơ bản (CRUD: Thêm/Sửa/Xóa)<br>• Ghi chép nhật ký kiểm thử và chụp ảnh màn hình minh chứng kết quả | `son-` |
+| **1** | **2351170625** | **Nguyễn Văn Trường** | **Nhóm trưởng** | • Quản lý chung dự án & phân công nhiệm vụ cho các thành viên<br>• Fork & cấu hình GitHub Repository, quản lý Git flow (nhánh, PR, merge)<br>• Hỗ trợ kỹ thuật, review code & giải quyết xung đột (conflict)<br>• Đóng gói sản phẩm (Build APK/Release), tổng hợp báo cáo & nộp bài | `truong-` |
+| **2** | **2251172386** | **Vũ Tuấn Khanh** | **Thành viên** | • Cài đặt các gói phụ thuộc (dependencies) và chuẩn hóa môi trường local<br>• Xây dựng kịch bản kiểm thử (Test Cases)<br>• Thực hiện kiểm thử toàn diện các chức năng cơ bản (CRUD: Thêm/Sửa/Xóa chi tiêu, tài khoản, danh mục)<br>• Ghi chép nhật ký kiểm thử và chụp ảnh màn hình minh chứng kết quả | `khanh-` |
+| **3** | **2351170580** | **Vũ Hải Đăng** | **Thành viên** | • Nghiên cứu cấu trúc UI/UX và hệ thống Theme (Material You) của Cashew<br>• Thực hiện tùy chỉnh giao diện (UI): Cá nhân hóa logo/banner nhóm, tùy biến màn hình About/Thông tin nhóm, tinh chỉnh bảng màu sắc (Theme Colors)<br>• Chụp ảnh đối chứng giao diện Trước và Sau khi thay đổi (Before/After) | `dang-` |
+| **4** | **2351170615** | **Lý Đình Sơn** | **Thành viên** | • Nghiên cứu luồng xử lý dữ liệu và logic nghiệp vụ của ứng dụng<br>• Thực hiện tùy chỉnh / bổ sung tính năng (Feature): Tối ưu hóa đơn vị tiền tệ VNĐ mặc định, thêm bộ danh mục chi tiêu đặc thù cho sinh viên, tùy biến bộ lọc thống kê chi tiêu<br>• Kiểm thử độ ổn định tính năng mới và chụp ảnh minh chứng hoạt động | `son-` |
 
 ---
 
 ## 📋 2. Bảng Phân Chia Công Việc Chi Tiết Theo Checklist 5 Mục
 
-| Mục | Yêu Cầu Checklist | Người Phụ Trách | Người Phối Hợp | Chi Tiết Công Việc & Sản Phẩm Bàn Giao | Tên Nhánh Git | Trạng Thái |
+| Mục | Yêu Cầu Checklist | Người Phụ Trách | Người Phối Hợp | Chi Tiết Công Việc & Sản Phẩm Bàn Giao | Tên Nhánh Git (Tên + Chức năng) | Trạng Thái |
 |:---:|:---|:---:|:---:|:---|:---|:---:|
-| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang repo của nhóm<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn clone mã nguồn | `truong-setup-repo` | ✅ Đã hoàn thành |
-| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK, Dart SDK tương thích<br>• Chạy `flutter pub get`<br>• Khắc phục lỗi thư viện & chuẩn hóa môi trường local | `khanh-setup-env` | ✅ Đã hoàn thành |
-| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Lý Đình Sơn** | Vũ Hải Đăng | • Chạy ứng dụng trên Emulator / thiết bị thật<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Chụp ảnh minh chứng lưu tại `screenshots/crud/` | `son-test-crud` | ✅ Đã hoàn thành |
-| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Vũ Tuấn Khanh** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Khanh):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi banner nhận diện.<br>• **Tính năng (Đăng):** Bổ sung danh mục sinh viên, định dạng tiền VNĐ.<br>• Hoàn thành code, review và merge vào `main`. | `khanh-custom-ui`<br>`dang-custom-feature` | ✅ Đã hoàn thành |
-| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Lý Đình Sơn, Vũ Hải Đăng | • Đóng gói ứng dụng thành file APK release<br>• Kiểm tra lại các quy trình chất lượng (QA)<br>• Tổng hợp ảnh chụp màn hình và nộp link GitHub | `truong-build-release` | ✅ Đã hoàn thành |
+| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang `NguyenTruongNT/Cashew`<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn các thành viên clone mã nguồn về local | `truong-setup-repo` |Chưa hoàn thành |
+| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK (v3.47.5), Dart SDK, Android SDK 36<br>• Chạy `flutter pub get` trong thư mục `budget`<br>• Viết báo cáo cài đặt & xử lý dependencies tại [`SETUP_ENVIRONMENT.md`](SETUP_ENVIRONMENT.md) | `khanh-setup-dependencies` | Chưa hoàn thành |
+| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Vũ Hải Đăng** | Lý Đình Sơn, Vũ Tuấn Khanh | • Chạy ứng dụng trên Emulator / thiết bị thật / Web<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Kiểm thử số dư, hạn mức danh mục và biểu đồ báo cáo<br>• Chụp 5 ảnh minh chứng lưu tại `screenshots/crud/` | `dang-test-crud` | Chưa hoàn thành |
+| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Lý Đình Sơn** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Sơn):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi màu sắc chủ đạo sang Emerald `#00796B`, đổi banner nhận diện nhóm.<br>• **Tính năng (Đăng):** Bổ sung danh mục chi tiêu học tập sinh viên, định dạng tiền tệ mặc định VNĐ, tối ưu hóa bộ lọc chi tiêu.<br>• Đã hoàn thành, review code và merge vào nhánh `main`. | `son-custom-ui-branding`<br>`khanh-custom-currency-vnd`<br>`dang-custom-feature` | Chưa hoàn thành |
+| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Vũ Tuấn Khanh, Vũ HẢi Đăng, Lý Đình Sơn | • Đóng gói ứng dụng thành bản phát hành Web/PWA (`build/web`) và gói nén `Cashew-Web-Release.zip`<br>• Khởi chạy và kiểm thử live session ứng dụng trên trình duyệt Chrome<br>• Tổng hợp toàn bộ ảnh chụp màn hình minh chứng kết quả<br>• Hoàn thiện README và nộp link GitHub đúng hạn | `truong-build-release` | Chưa hoàn thành |
 
 ---
 
@@ -36,18 +144,19 @@
 > - Mỗi thành viên khi làm bất kỳ nhiệm vụ nào **BẮT BUỘC PHẢI TẠO MỘT NHÁNH MỚI** chứa cú pháp: **`<tên_thành_viên>-<tên_chức_năng>`**.  
 > - Sau khi hoàn thành và kiểm thử ở local, push nhánh đó lên GitHub và tạo **Pull Request (PR)** để Nhóm trưởng review, giải quyết xung đột (nếu có) và merge vào `main`.
 
-### 📌 Bảng Quy Định Tên Nhánh Chi Tiết Cho Từng Thành Viên
+### 📌 Bảng Quy Định Tên Nhánh Chi Tiết Cho Từng Thành Viên:
 
-| Thành Viên | Tiền Tố | Tên Nhánh Khi Push Code | Mục Đích / Chức Năng Phụ Trách | Trạng Thái Nhánh |
+| Thành Viên | Tiền Tố Tên | Tên Nhánh Khi Push Code | Mục Đích / Chức Năng Phụ Trách | Trạng Thái Nhánh |
 |---|:---:|:---|:---|:---:|
-| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo, review code<br>• Đóng gói APK và hoàn thiện tài liệu nộp bài | ✅ Đã hoàn thành |
-| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-env`<br>`khanh-custom-ui` | • Thiết lập thư viện và tài liệu môi trường<br>• Tùy chỉnh giao diện: màn hình giới thiệu nhóm, banner | ✅ Đã hoàn thành |
-| **Vũ Hải Đăng** | `dang-` | `dang-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định<br>• Thêm danh mục chi tiêu sinh viên | ✅ Đã hoàn thành |
-| **Lý Đình Sơn** | `son-` | `son-test-crud` | • Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch | ✅ Đã hoàn thành |
+| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo<br>• Đóng gói sản phẩm và hoàn thiện tài liệu nộp bài |  Chưa merge<br> Chưa hoàn thành |
+| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-dependencies`<br>`khanh-test-crud` | • Thiết lập thư viện và tài liệu môi trường<br>• Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch |  Chưa merge<br> Chưa hoàn thành |
+| **Vũ Hải Đăng** | `dang-` | `dang-custom-ui-branding`<br>`dang-custom-theme` | • Tùy chỉnh giao diện: màn hình giới thiệu nhóm, logo, banner<br>• Tùy biến màu sắc, theme theo nhận diện nhóm |  Chưa merge<br> Chưa hoàn thành |
+| **Lý Đình Sơn** | `son-` | `son-custom-currency-vnd`<br>`son-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định, format số tiền<br>• Thêm danh mục chi tiêu sinh viên & cải tiến bộ lọc |  Chưa merge<br> Chưa hoàn thành |
+
 
 ---
 
-### 🚀 Hướng Dẫn Các Bước Tạo Nhánh & Push Code Chi Tiết
+### 🚀 Hướng Dẫn Các Bước Tạo Nhánh & Push Code Chi Tiết:
 
 Mỗi khi bắt đầu làm một tính năng, thành viên thực hiện tuần tự theo các lệnh sau trong terminal:
 
@@ -57,7 +166,8 @@ git checkout main
 git pull origin main
 
 # Bước 2: Tạo nhánh mới với quy tắc: <tên>-<tên-chức-năng>
-git checkout -b son-test-crud
+# Ví dụ:
+git checkout -b truong-build-release
 
 # Bước 3: Thực hiện code, chỉnh sửa và kiểm thử ứng dụng chạy ổn định ở local
 
@@ -66,94 +176,113 @@ git status
 
 # Bước 5: Thêm file và commit với cú pháp rõ ràng
 git add .
-git commit -m "[Son] Kiem thu chuc nang CRUD va chup anh minh chung"
+git commit -m "[Truong] Dong goi san pham phat hanh va hoan thien README"
 
 # Bước 6: Push nhánh mới lên remote GitHub
-git push origin son-test-crud
+git push origin truong-build-release
 
-# Bước 7: Mở GitHub repository, chọn 'Compare & pull request'
-# để gửi yêu cầu merge vào nhánh main.
+# Bước 7: Mở GitHub repository, chọn 'Compare & pull request' để gửi yêu cầu merge vào nhánh main.
+# Nhóm trưởng sẽ review code và duyệt merge.
 ```
 
 ---
 
-## 🌟 4. Chi Tiết Các Tính Năng & Giao Diện Dự Kiến Tùy Chỉnh
+## 🌟 4. Chi Tiết Các Tính Năng & Giao Diện Đã Tùy Chỉnh (Customization Details)
 
-Các nội dung dưới đây là kế hoạch tùy chỉnh của nhóm trên hai phương diện: **Giao diện người dùng (UI/UX)** và **Tính năng nghiệp vụ (Business Features)**.
+Đồ án đã thực hiện cá nhân hóa sâu trên cả hai phương diện: **Giao diện người dùng (UI/UX)** và **Tính năng nghiệp vụ (Business Features)**, đã được nhóm trưởng review và merge chính thức vào nhánh `main`:
 
-### 🎨 4.1. Tùy Biến Giao Diện & Nhận Diện Nhóm  
-**Người thực hiện: Vũ Tuấn Khanh**  
-**Trạng thái: ✅ Đã hoàn thành**
+### 🎨 4.1. Tùy Biến Giao Diện & Nhận Diện Nhóm (Thực hiện: VŨ TUẤN KHANH)
+- **Banner nhận diện nhóm trên trang Cài đặt (`budget/lib/pages/settingsPage.dart`):**  
+  Tích hợp thẻ banner `TeamBrandingBanner` ở vị trí nổi bật, hiển thị tên đồ án, logo ví tiền, các thẻ chip thành viên nhóm với vai trò cụ thể, hỗ trợ cả 2 chế độ Dark Mode/Light Mode và Material You. Khi chạm vào banner sẽ tự động điều hướng sang màn hình giới thiệu đồ án.
+- **Cá nhân hóa màn hình Giới thiệu (`budget/lib/pages/aboutPage.dart`):**  
+  Thêm danh mục **"NHÓM THỰC HIỆN ĐỒ ÁN"** lên đầu trang với danh thiếp `StudentMemberCard` hiển thị từng thành viên (Họ tên, MSSV, vai trò, công việc). Đồng thời cập nhật liên kết mã nguồn mở dẫn trực tiếp về repository của nhóm: `https://github.com/NguyenTruongNT/Cashew`.
+- **Cập nhật Theme màu sắc mới (`budget/lib/colors.dart` & `defaultPreferences.dart`):**  
+  Bổ sung mã màu ngọc lục bảo **Emerald** (`#00796B`) vào bảng màu có thể lựa chọn và thiết lập làm **màu nhấn mặc định (`accentColor`)** khi người dùng mở ứng dụng lần đầu.
 
-- **Banner nhận diện nhóm trên trang Cài đặt (`budget/lib/pages/settingsPage.dart`):**
-  - Dự kiến tích hợp thẻ banner `TeamBrandingBanner` ở vị trí nổi bật.
-  - Hiển thị tên đồ án, logo và các thẻ thành viên nhóm.
-  - Hỗ trợ Dark Mode và Light Mode.
-
-- **Cá nhân hóa màn hình Giới thiệu (`budget/lib/pages/aboutPage.dart`):**
-  - Dự kiến thêm danh mục **"NHÓM THỰC HIỆN ĐỒ ÁN"**.
-  - Hiển thị từng thành viên gồm họ tên, MSSV và vai trò.
-  - Cập nhật liên kết mã nguồn mở về repository của nhóm.
-
-### ⚙️ 4.2. Tùy Biến Tính Năng Nghiệp Vụ  
-**Người thực hiện: Vũ Hải Đăng**  
-**Trạng thái: ✅ Đã hoàn thành**
-
-- **Định dạng tiền tệ mặc định sang VNĐ (`budget/lib/functions.dart`, `currencyFunctions.dart`):**
-  - Dự kiến chuyển tiền tệ mặc định sang **VNĐ (Việt Nam Đồng)**.
-  - Ẩn chữ số thập phân không cần thiết.
-  - Định dạng dấu phân cách hàng nghìn phù hợp.
-
-- **Bộ danh mục chi tiêu dành riêng cho Sinh viên (`budget/lib/struct/defaultCategories.dart`):**
-  - Dự kiến bổ sung các danh mục như:
-    - Học phí
-    - Tiền thuê trọ
-    - Sách vở
-    - Đồ dùng học tập
-    - Ăn uống
-    - Đi lại
-    - Giải trí
-    - Chi phí sinh hoạt khác
+### ⚙️ 4.2. Tùy Biến Tính Năng Nghiệp Vụ (Thực hiện: VŨ HẢI ĐĂNG)
+- **Định dạng tiền tệ mặc định sang VNĐ (`budget/lib/functions.dart`, `currencyFunctions.dart`):**  
+  Chuyển đổi tiền tệ mặc định của toàn bộ ứng dụng sang **VNĐ (Việt Nam Đồng)**, cấu hình ẩn chữ số thập phân không cần thiết cho VNĐ và định dạng dấu phân cách phần nghìn chuẩn tiếng Việt.
+- **Bộ danh mục chi tiêu dành riêng cho Sinh viên (`budget/lib/struct/defaultCategories.dart`):**  
+  Bổ sung danh mục chi tiêu học tập - sinh hoạt đặc thù phù hợp thực tế sinh viên Việt Nam: *Học phí, Tiền thuê trọ, Sách vở - Giáo trình, Đồ dùng học tập, v.v.*
+- **Nâng cấp bộ lọc tìm kiếm giao dịch (`budget/lib/pages/transactionsSearchPage.dart`):**  
+  Tối ưu hóa thao tác tìm kiếm và phân loại chi tiêu theo các danh mục sinh viên.
 
 ---
 
 ## 🛠️ 5. Hướng Dẫn Cài Đặt Và Khởi Chạy Ứng Dụng (Quick Start)
 
-### Yêu cầu tiên quyết
-
-- **Flutter SDK:** `>= 3.0.0` (khuyên dùng Flutter 3.x stable)
+### Yêu cầu tiên quyết:
+- **Flutter SDK:** `>= 3.0.0` (Khuyên dùng Flutter 3.x stable)
 - **Dart SDK:** Đi kèm với Flutter
-- **Công cụ:** Android Studio / VS Code
-- **Thiết bị:** Android Emulator hoặc thiết bị Android thật
+- **Công cụ:** Google Chrome / Edge (cho Web), hoặc Android Studio / VS Code với Android Emulator.
 
-### Các bước thực hiện
+### Các bước thực hiện:
 
-#### 1. Clone mã nguồn dự án
+1. **Clone mã nguồn dự án:**
+   ```bash
+   git clone https://github.com/NguyenTruongNT/Cashew
+   cd Cashew/budget
+   ```
 
-```bash
-git clone https://github.com/NguyenTruongNT/Cashew.git
-cd Cashew/budget
-```
+2. **Cài đặt các gói phụ thuộc (Dependencies):**
+   ```bash
+   flutter pub get
+   ```
 
-#### 2. Cài đặt các gói phụ thuộc
+3. **Khởi chạy ứng dụng (Debug Mode):**
+   ```bash
+   # Khởi chạy trên trình duyệt Web (Google Chrome):
+   flutter run -d chrome
 
-```bash
-flutter pub get
-```
+   # Hoặc khởi chạy trên máy ảo Android (Pixel_34):
+   # flutter emulators --launch Pixel_34
+   # flutter run
+   ```
 
-#### 3. Khởi chạy ứng dụng ở Debug Mode
+4. **Đóng gói bản cài đặt phát hành (Release Mode):**
+   ```bash
+   # Đóng gói bản phát hành Web / PWA:
+   flutter build web --release
 
-```bash
-flutter run
-```
-
-#### 4. Đóng gói bản Android APK Release
-
-```bash
-flutter build apk --release
-```
+   # Đóng gói bản cài đặt Android APK (khi cấu hình Android build):
+   # flutter build apk --release
+   ```
+   *Thư mục phát hành sau khi build nằm tại:* `budget/build/web/` hoặc file nén `Cashew-Web-Release.zip` tại thư mục gốc.
 
 ---
+
+## 📸 6. Danh Mục Ảnh Chụp Màn Hình Minh Chứng (Screenshots)
+
+Toàn bộ ảnh chụp màn hình kết quả chạy và kiểm thử ứng dụng được lưu trữ tại thư mục `screenshots/`:
+
+### 🧪 6.1. Minh Chứng Kiểm Thử Chức Năng Cơ Bản (CRUD) - Thực hiện: LÝ ĐÌNH SƠN
+| Tên File Ảnh | Nội Dung Kiểm Thử | Trạng Thái | Đường Dẫn Tệp |
+|:---|:---|:---:|:---:|
+| `01_create_expense.png` | Kiểm thử thêm mới khoản chi tiêu giao dịch | ✅ Đạt | [`screenshots/crud/01_create_expense.png`](screenshots/crud/01_create_expense.png) |
+| `02_update_expense.png` | Kiểm thử chỉnh sửa thông tin khoản chi tiêu | ✅ Đạt | [`screenshots/crud/02_update_expense.png`](screenshots/crud/02_update_expense.png) |
+| `03_delete_expense.png` | Kiểm thử xóa khoản chi tiêu khỏi hệ thống | ✅ Đạt | [`screenshots/crud/03_delete_expense.png`](screenshots/crud/03_delete_expense.png) |
+| `04_categories_budget.png` | Kiểm tra giao diện danh mục & hạn mức ngân sách | ✅ Đạt | [`screenshots/crud/04_categories_budget.png`](screenshots/crud/04_categories_budget.png) |
+| `05_analytics_chart.png` | Kiểm tra biểu đồ phân tích chi tiêu & cập nhật số dư | ✅ Đạt | [`screenshots/crud/05_analytics_chart.png`](screenshots/crud/05_analytics_chart.png) |
+
+### 🎨 6.2. Minh Chứng Tùy Chỉnh Giao Diện & Tính Năng - Thực hiện: KHANH & ĐĂNG
+| Tên File Ảnh | Nội Dung Minh Chứng | Người Thực Hiện | Đường Dẫn Tệp |
+|:---|:---|:---:|:---:|
+| `setting.png` | Banner nhận diện đồ án & nhóm trên trang Cài đặt |  [`screenshots/customization/setting.png`](screenshots/customization/setting.png) |
+| `about.png` | Màn hình About hiển thị thông tin nhóm đồ án & MSSV |  [`screenshots/customization/about.png`](screenshots/customization/about.png) |
+| `home.png` | Giao diện chính màn hình Home với Theme màu Emerald mới | [`screenshots/customization/home.png`](screenshots/customization/home.png) |
+| `defaultmoney.png` | Cấu hình tiền tệ mặc định sang VNĐ (Việt Nam Đồng) | [`screenshots/customization/defaultmoney.png`](screenshots/customization/defaultmoney.png) |
+| `student_categories.png` | Danh mục chi tiêu học tập - sinh hoạt cho sinh viên | [`screenshots/customization/student_categories.png`](screenshots/customization/student_categories.png) |
+
+### 📦 6.3. Minh Chứng Đóng Gói Sản Phẩm (Release Packaging) - Thực hiện: NGUYỄN VĂN TRƯỜNG
+| Sản Phẩm Bàn Giao | Mô Tả | Trạng Thái | Vị Trí Lưu Trữ |
+|:---|:---|:---:|:---:|
+| `build/web/` | Bản build phát hành Web/PWA hoàn chỉnh với tối ưu AOT & Tree-shaking | ✅ Đạt | `budget/build/web/` |
+| `Cashew-Web-Release.zip` | Gói nén zip toàn bộ bundle phát hành độc lập để triển khai | ✅ Đạt | Thư mục gốc dự án |
+| `screenshots/build/` | Tài liệu minh chứng quy trình đóng gói và triển khai sản phẩm | ✅ Đạt | [`screenshots/build/README.md`](screenshots/build/README.md) |
+
+
+---
+
 
 # 📖 TÀI LIỆU GỐC DỰ ÁN CASHEW (ORIGINAL CASHEW DOCUMENTATION)
 
