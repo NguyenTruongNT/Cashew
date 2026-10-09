@@ -114,11 +114,17 @@ study_document_manager/
 ---
 
 ## 🧪 5. Kiểm thử tự động (Automated Testing)
-Dự án được viết đầy đủ bộ Unit Test & Widget Test cho cả 3 tầng kiến trúc:
+Dự án được viết đầy đủ bộ Unit Test & Widget Test cho cả 3 tầng kiến trúc, bao gồm cả tầng đồng bộ Offline-First:
 ```bash
 flutter test
 ```
-Kết quả kiểm thử đạt **15/15 test cases pass (100%)**.
+Kết quả kiểm thử đạt **42/42 test cases pass (100%)**, trong đó:
+
+- 15 test nền tảng: Data (CRUD/Search/Reactive Stream), Struct (Validation/Stats/Formatters), Presentation (Widgets).
+- 6 test checksum MD5/SHA-256 với vector chuẩn.
+- 13 test SyncEngine: PUSH/PULL, checksum, `delete_logs`, mất mạng, xung đột LWW, retry.
+- 4 test hiệu năng mạng yếu + mất gói.
+- 4 test giao diện thẻ trạng thái đồng bộ.
 
 ## 🎨 6. Giao diện và nhập môn học
 - Giao diện dùng dải màu Indigo–Violet–Blue, có biến thể sáng/tối và giới hạn chiều rộng nội dung trên Chrome để dễ đọc.
@@ -173,4 +179,23 @@ firebase deploy --only storage --project=cashew-study-docs-3afed
 
 - Báo cáo phân tích đủ checklist 1–7: [BAO_CAO_TICH_HOP_CLOUD.md](BAO_CAO_TICH_HOP_CLOUD.md).
 - Slide trình chiếu: [SLIDE_FIREBASE_CLOUD.pptx](SLIDE_FIREBASE_CLOUD.pptx); nội dung có thể chỉnh ở [SLIDE_FIREBASE_CLOUD.md](SLIDE_FIREBASE_CLOUD.md). Thay `[Điền tên nhóm]` và `[Điền tên thành viên]` trước khi nộp.
-- Báo cáo phân biệt phần đã có (Google Authentication, Cloud Storage, SQLite local) với Firestore/đồng bộ metadata là phần mở rộng chưa triển khai. Build/test thành công không thay thế cho kiểm tra đăng nhập, bucket và Rules trên Firebase Console thật.
+- Báo cáo phân biệt phần đã có (Google Authentication, Cloud Storage, SQLite local) với Firestore/đồng bộ metadata là phần mở rộng. Nhánh `son-offline-sync` đã bổ sung **Local Cache + đồng bộ metadata Offline-First** (xem Mục 8). Build/test thành công không thay thế cho kiểm tra đăng nhập, bucket và Rules trên Firebase Console thật.
+
+---
+
+## 🔄 8. Local Cache & Đồng bộ Cloud (Offline-First)
+
+Nhánh `son-offline-sync` bổ sung cơ chế **Offline-First**: thao tác cục bộ được ghi ngay vào SQLite và lưu tệp vào cache; khi có mạng, dữ liệu tự động đẩy lên/kéo về Cloud.
+
+- **Hàng đợi đồng bộ:** bảng `sync_outbox` lưu các thao tác `upsert`/`delete` chờ đẩy lên Cloud.
+- **Đồng bộ hai chiều:** `SyncEngine.push` (outbox → Cloud) và `SyncEngine.pull` (Cloud → SQLite theo mốc `lastSyncAt`).
+- **Toàn vẹn dữ liệu:** checksum **MD5/SHA-256** (`crypto`) kiểm tra tệp trước khi đẩy và sau khi kéo.
+- **Đồng bộ xóa:** bảng `delete_logs` (tombstone) đảm bảo xóa hai chiều, không "hồi sinh" dữ liệu.
+- **Xung đột:** Last-Write-Wins có kiểm soát dựa trên `version` + `updatedDate`.
+- **Kết nối:** `HeartbeatNetworkMonitor` tự động kích hoạt đồng bộ khi mạng phục hồi.
+- **Giao diện:** thẻ `SyncStatusBanner` trên Dashboard hiển thị Online/Offline, số mục chờ và nút "Đồng bộ ngay".
+- **Nền tảng Cloud:** trừu tượng qua `RemoteSyncService`; mặc định dùng `MockRemoteSyncService` (không cần credentials), dễ thay bằng Firebase/AWS.
+
+**Schema SQLite nâng từ v2 lên v3** (tự động migration): thêm 8 cột đồng bộ vào `documents` và 3 bảng `delete_logs`, `sync_outbox`, `sync_state`.
+
+📄 Chi tiết kiến trúc, mô hình dữ liệu, kết quả kiểm thử và hiệu năng mạng yếu: [SON_BAOCAO_OFFLINE_SYNC.md](SON_BAOCAO_OFFLINE_SYNC.md).

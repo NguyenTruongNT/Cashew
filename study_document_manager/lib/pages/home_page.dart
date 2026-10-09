@@ -13,8 +13,9 @@ import '../struct/google_auth_service.dart';
 import '../struct/models/document_models.dart';
 import '../widgets/document_card.dart';
 import '../widgets/framework/page_framework.dart';
-import '../widgets/cloud/account_menu_button.dart';
-import '../widgets/cloud/cloud_status_strip.dart';
+
+import '../widgets/sync_status_banner.dart';
+
 import 'add_edit_document_page.dart';
 import 'document_detail_page.dart';
 import 'document_list_page.dart';
@@ -177,73 +178,96 @@ class _HomePageState extends State<HomePage> {
       body: StreamBuilder<List<DocumentModel>>(
         stream: database.watchAllDocuments,
 
-        builder:
-            (
-              BuildContext context,
-              AsyncSnapshot<List<DocumentModel>> snapshot,
-            ) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              final List<DocumentModel> allDocuments =
-                  snapshot.data ?? <DocumentModel>[];
+          final allDocs = snapshot.data ?? [];
+          final stats = DocumentStats.fromList(allDocs);
 
-              final DocumentStats stats = DocumentStats.fromList(allDocuments);
+          // Danh sách bài tập chưa hoàn thành (sắp xếp theo hạn chót gần nhất)
+          final pendingAssignments =
+              allDocs
+                  .where(
+                    (d) =>
+                        d.type == DocumentType.assignment &&
+                        d.status != DocumentStatus.completed,
+                  )
+                  .toList()
+                ..sort((a, b) {
+                  if (a.deadline == null && b.deadline == null) return 0;
+                  if (a.deadline == null) return 1;
+                  if (b.deadline == null) return -1;
+                  return a.deadline!.compareTo(b.deadline!);
+                });
 
-              // Danh sách bài tập chưa hoàn thành.
-              final List<DocumentModel> pendingAssignments =
-                  allDocuments
-                      .where(
-                        (DocumentModel document) =>
-                            document.type == DocumentType.assignment &&
-                            document.status != DocumentStatus.completed,
-                      )
-                      .toList()
-                    ..sort((DocumentModel first, DocumentModel second) {
-                      if (first.deadline == null && second.deadline == null) {
-                        return 0;
-                      }
+          // Danh sách tài liệu cập nhật gần đây (lấy tối đa 5)
+          final recentDocs = List<DocumentModel>.from(allDocs)
+            ..sort((a, b) => b.updatedDate.compareTo(a.updatedDate));
+          final topRecent = recentDocs.take(5).toList();
 
-                      if (first.deadline == null) {
-                        return 1;
-                      }
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 90),
+            children: [
+              // 0. THẺ TRẠNG THÁI ĐỒNG BỘ OFFLINE-FIRST (Online/Offline)
+              const SyncStatusBanner(),
 
-                      if (second.deadline == null) {
-                        return -1;
-                      }
-
-                      return first.deadline!.compareTo(second.deadline!);
-                    });
-
-              // Danh sách tài liệu cập nhật gần đây.
-              final List<DocumentModel> recentDocuments =
-                  List<DocumentModel>.from(allDocuments)
-                    ..sort((DocumentModel first, DocumentModel second) {
-                      return second.updatedDate.compareTo(first.updatedDate);
-                    });
-
-              final List<DocumentModel> topRecent = recentDocuments
-                  .take(5)
-                  .toList();
-
-              return ListView(
-                padding: const EdgeInsets.only(bottom: 90),
-                children: <Widget>[
-                  // =======================================================
-                  // 1. BANNER THỐNG KÊ TỔNG QUAN
-                  // =======================================================
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.bannerGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+              // 1. BANNER THỐNG KÊ TỔNG QUAN PHONG CÁCH CASHEW
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: AppColors.bannerGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tổng quan tài liệu học kỳ',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${stats.totalDocuments} Tài liệu',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_subjectMap.length} Môn học',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
 
                         ),
                       ],
