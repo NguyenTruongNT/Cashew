@@ -28,7 +28,11 @@ void main() {
       final subjects = await db.getAllSubjects();
       final docs = await db.getAllDocuments();
 
-      expect(subjects.isNotEmpty, isTrue, reason: 'Phải có môn học mẫu ban đầu');
+      expect(
+        subjects.isNotEmpty,
+        isTrue,
+        reason: 'Phải có môn học mẫu ban đầu',
+      );
       expect(docs.isNotEmpty, isTrue, reason: 'Phải có tài liệu mẫu ban đầu');
     });
 
@@ -53,14 +57,17 @@ void main() {
 
       final retrieved = await db.getDocumentById('test_doc_101');
       expect(retrieved, isNotNull);
-      expect(retrieved!.title, equals('Kiểm thử Đơn vị trong Kiến trúc Cashew'));
+      expect(
+        retrieved!.title,
+        equals('Kiểm thử Đơn vị trong Kiến trúc Cashew'),
+      );
       expect(retrieved.tags, contains('UnitTest'));
       expect(retrieved.isFavorite, isTrue);
     });
 
     test('3. Chỉnh sửa thông tin tài liệu (Update)', () async {
       final docs = await db.getAllDocuments();
-      final targetDoc = docs.first;
+      final targetDoc = docs.firstWhere((document) => !document.isShared);
 
       final updatedDoc = targetDoc.copyWith(
         title: 'Tiêu đề đã được sửa thành công',
@@ -76,12 +83,16 @@ void main() {
 
     test('4. Xóa tài liệu học tập (Delete)', () async {
       final docs = await db.getAllDocuments();
-      final targetDoc = docs.first;
+      final targetDoc = docs.firstWhere((document) => !document.isShared);
 
       await db.deleteDocument(targetDoc.id);
 
       final retrieved = await db.getDocumentById(targetDoc.id);
-      expect(retrieved, isNull, reason: 'Tài liệu sau khi xóa phải trả về null');
+      expect(
+        retrieved,
+        isNull,
+        reason: 'Tài liệu sau khi xóa phải trả về null',
+      );
     });
 
     test('5. Tìm kiếm tài liệu theo từ khóa và bộ lọc (Search)', () async {
@@ -95,31 +106,110 @@ void main() {
       );
 
       // Tìm kiếm theo loại tài liệu (Chỉ lấy bài tập)
-      final searchByType = await db.searchDocuments(type: DocumentType.assignment);
-      expect(searchByType.every((d) => d.type == DocumentType.assignment), isTrue);
+      final searchByType = await db.searchDocuments(
+        type: DocumentType.assignment,
+      );
+      expect(
+        searchByType.every((d) => d.type == DocumentType.assignment),
+        isTrue,
+      );
 
       // Tìm kiếm theo môn học
       final searchBySubject = await db.searchDocuments(subjectId: 'sub_swe');
       expect(searchBySubject.every((d) => d.subjectId == 'sub_swe'), isTrue);
     });
 
-    test('6. Kiểm tra luồng phản ứng dữ liệu (Reactive Stream watchAllDocuments)', () async {
-      expectLater(
-        db.watchAllDocuments,
-        emits(isA<List<DocumentModel>>()),
-      );
+    test(
+      '6. Kiểm tra luồng phản ứng dữ liệu (Reactive Stream watchAllDocuments)',
+      () async {
+        expectLater(db.watchAllDocuments, emits(isA<List<DocumentModel>>()));
 
-      // Thêm 1 tài liệu để kích hoạt Stream phát dữ liệu mới
-      final testDoc = DocumentModel(
-        id: 'reactive_doc_01',
-        title: 'Tài liệu kích hoạt Reactive Stream',
-        subjectId: 'sub_mob',
-        type: DocumentType.reference,
-        createdDate: DateTime.now(),
-        updatedDate: DateTime.now(),
-      );
+        // Thêm 1 tài liệu để kích hoạt Stream phát dữ liệu mới
+        final testDoc = DocumentModel(
+          id: 'reactive_doc_01',
+          title: 'Tài liệu kích hoạt Reactive Stream',
+          subjectId: 'sub_mob',
+          type: DocumentType.reference,
+          createdDate: DateTime.now(),
+          updatedDate: DateTime.now(),
+        );
 
-      await db.insertDocument(testDoc);
-    });
+        await db.insertDocument(testDoc);
+      },
+    );
+
+    test(
+      '7. Dữ liệu được phân vùng theo tài khoản và giữ dữ liệu cũ ở local',
+      () async {
+        final legacyLocalDocument = await db.getDocumentById('doc_1');
+        expect(legacyLocalDocument, isNotNull);
+        final sharedLecture = await db.getDocumentById(
+          'shared_doc_swe_lecture_01',
+        );
+        expect(sharedLecture?.isShared, isTrue);
+        expect(
+          (await db.getAllDocuments()).where((document) => document.isShared),
+          hasLength(2),
+        );
+
+        await db.setActiveOwner('user-a');
+        var documents = await db.getAllDocuments();
+        expect(documents.where((document) => document.isShared), hasLength(2));
+        expect(documents.where((document) => !document.isShared), hasLength(2));
+        expect(await db.getAllSubjects(), hasLength(2));
+        final userAAssignments = documents
+            .where((document) => !document.isShared)
+            .toList();
+        expect(
+          userAAssignments.every(
+            (document) => document.type == DocumentType.assignment,
+          ),
+          isTrue,
+        );
+
+        final userSubject = SubjectModel(
+          id: 'user_a_subject',
+          name: 'Môn riêng của A',
+          code: 'A101',
+          colorValue: 0xFF1E88E5,
+          iconName: 'book',
+          createdDate: DateTime.now(),
+        );
+        await db.insertSubject(userSubject);
+
+        final userDocument = DocumentModel(
+          id: 'user_a_document',
+          title: 'Tài liệu riêng của A',
+          subjectId: userSubject.id,
+          type: DocumentType.reference,
+          createdDate: DateTime.now(),
+          updatedDate: DateTime.now(),
+        );
+        await db.insertDocument(userDocument);
+
+        await db.setActiveOwner('user-b');
+        documents = await db.getAllDocuments();
+        expect(documents.where((document) => document.isShared), hasLength(2));
+        expect(documents.where((document) => !document.isShared), hasLength(2));
+        expect(await db.getDocumentById(userDocument.id), isNull);
+        expect(await db.updateDocument(userDocument), 0);
+        expect(await db.deleteDocument(userDocument.id), 0);
+        expect(await db.updateDocument(sharedLecture!), 0);
+        expect(await db.deleteDocument(sharedLecture.id), 0);
+        await expectLater(
+          db.insertDocument(userDocument),
+          throwsA(isA<StateError>()),
+        );
+
+        await db.setActiveOwner('user-a');
+        expect(await db.getDocumentById(userDocument.id), isNotNull);
+        expect(await db.getAllSubjects(), hasLength(3));
+
+        await db.setActiveOwner(null);
+        expect(await db.getDocumentById('doc_1'), isNotNull);
+        expect(await db.getDocumentById(userDocument.id), isNull);
+        expect(await db.getDocumentById(sharedLecture.id), isNotNull);
+      },
+    );
   });
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1047483797850",
+    "project_id": "document-manager-e4289",
+    "storage_bucket": "document-manager-e4289.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1047483797850:android:c85776ddafcff074d7a363",
+        "android_client_info": {
+          "package_name": "vn.edu.cashew.study_document_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5CnvMIZYeqe4SAYZVMQBir3omLDofZTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

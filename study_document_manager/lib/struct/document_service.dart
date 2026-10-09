@@ -110,8 +110,13 @@ class DocumentService {
       return null; // Được phép để trống
     }
     final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null &&
+        uri.scheme == 'firebase-storage' &&
+        uri.path.isNotEmpty) {
+      return null;
+    }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      final uri = Uri.tryParse(trimmed);
       if (uri == null || !uri.hasAuthority) {
         return 'Định dạng đường dẫn liên kết URL không hợp lệ';
       }

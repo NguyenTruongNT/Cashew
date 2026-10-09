@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../colors.dart';
 import '../struct/formatters.dart';
 import '../struct/models/document_models.dart';
+import 'cloud/cloud_sync_badge.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG GIAO DIỆN TÁI SỬ DỤNG: THẺ TÀI LIỆU (DOCUMENT CARD)]
@@ -87,27 +88,60 @@ class DocumentCard extends StatelessWidget {
                       if (subject != null)
                         _SubjectBadge(subject: subject!),
 
+                      if (document.isShared)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.people_outline_rounded,
+                                size: 13,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'Chung',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       const Spacer(),
 
                       // Nút yêu thích
-                      GestureDetector(
-                        onTap: onFavoriteToggle,
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            document.isFavorite
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            color: document.isFavorite
-                                ? const Color(0xFFFFBF00)
-                                : (isDark ? AppColors.textHintDark : AppColors.textHintLight),
-                            size: 20,
+                      if (!document.isShared)
+                        GestureDetector(
+                          onTap: onFavoriteToggle,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              document.isFavorite
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: document.isFavorite
+                                  ? const Color(0xFFFFBF00)
+                                  : (isDark ? AppColors.textHintDark : AppColors.textHintLight),
+                              size: 20,
+                            ),
                           ),
                         ),
-                      ),
 
                       // Menu 3 chấm
-                      PopupMenuButton<String>(
+                      if (!document.isShared)
+                        PopupMenuButton<String>(
                         icon: Icon(
                           Icons.more_vert_rounded,
                           size: 18,
@@ -278,30 +312,31 @@ class _CardFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final hintColor = isDark ? AppColors.textHintDark : AppColors.textHintLight;
 
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        // Ngày cập nhật
-        Icon(Icons.history_rounded, size: 13, color: hintColor),
-        const SizedBox(width: 3),
-        Text(
-          DocumentFormatters.formatDate(document.updatedDate),
-          style: TextStyle(fontSize: 11.5, color: hintColor),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history_rounded, size: 13, color: hintColor),
+            const SizedBox(width: 3),
+            Text(
+              DocumentFormatters.formatDate(document.updatedDate),
+              style: TextStyle(fontSize: 11.5, color: hintColor),
+            ),
+          ],
         ),
-
-        // Deadline nếu có
         if (isAssignment && document.deadline != null) ...[
-          const SizedBox(width: 8),
-          const Text('·', style: TextStyle(color: AppColors.textHintLight)),
-          const SizedBox(width: 8),
-          _DeadlineChip(deadline: document.deadline!, isCompleted: isCompleted),
+          _DeadlineChip(
+            deadline: document.deadline!,
+            isCompleted: isCompleted,
+          ),
         ],
-
-        const Spacer(),
-
-        // Nút trạng thái bài tập
         if (isAssignment)
           GestureDetector(
-            onTap: onStatusToggle,
+            onTap: document.isShared ? null : onStatusToggle,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -333,18 +368,9 @@ class _CardFooter extends StatelessWidget {
                 ],
               ),
             ),
-          )
-        else if (document.fileUrl.isNotEmpty)
-          Row(
-            children: [
-              const Icon(Icons.link_rounded, size: 13, color: AppColors.primary),
-              const SizedBox(width: 3),
-              const Text(
-                'Có liên kết',
-                style: TextStyle(fontSize: 11.5, color: AppColors.primary, fontWeight: FontWeight.w600),
-              ),
-            ],
           ),
+        if (document.fileUrl.isNotEmpty)
+          CloudSyncBadge(fileUrl: document.fileUrl, compact: true),
       ],
     );
   }

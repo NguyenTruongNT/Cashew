@@ -6,9 +6,12 @@ import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
+import '../struct/firebase_platform_support.dart';
 import '../struct/models/document_models.dart';
 import '../widgets/document_card.dart';
 import '../widgets/framework/page_framework.dart';
+import '../widgets/cloud/account_menu_button.dart';
+import '../widgets/cloud/cloud_status_strip.dart';
 import 'add_edit_document_page.dart';
 import 'document_detail_page.dart';
 import 'document_list_page.dart';
@@ -30,12 +33,18 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Map<String, SubjectModel> _subjectMap = {};
+  List<DocumentModel> _initialDocuments = [];
+  bool _isLoadingDocuments = true;
   StreamSubscription<List<SubjectModel>>? _subjectsSubscription;
 
   @override
   void initState() {
     super.initState();
+    _initialDocuments = database.cachedDocuments;
+    _subjectMap = {for (final s in database.cachedSubjects) s.id: s};
+    _isLoadingDocuments = _initialDocuments.isEmpty;
     _loadSubjects();
+    _loadInitialDocuments();
     _subjectsSubscription = database.watchAllSubjects.listen((subjects) {
       if (mounted) {
         setState(() {
@@ -52,11 +61,33 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadSubjects() async {
-    final list = await database.getAllSubjects();
-    if (mounted) {
-      setState(() {
-        _subjectMap = {for (final s in list) s.id: s};
-      });
+    try {
+      final list = await database.getAllSubjects().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => database.cachedSubjects,
+      );
+      if (mounted) {
+        setState(() {
+          _subjectMap = {for (final s in list) s.id: s};
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadInitialDocuments() async {
+    try {
+      final documents = await database.getAllDocuments().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => database.cachedDocuments,
+      );
+      if (mounted) {
+        setState(() {
+          _initialDocuments = documents;
+          _isLoadingDocuments = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingDocuments = false);
     }
   }
 
@@ -71,6 +102,7 @@ class _HomePageState extends State<HomePage> {
           onPressed: () => pushRoute(context, const DocumentSearchPage()),
           tooltip: 'Tìm kiếm tài liệu',
         ),
+        if (canUseFirebase) const AccountMenuButton(),
       ],
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
@@ -82,11 +114,12 @@ class _HomePageState extends State<HomePage> {
       body: StreamBuilder<List<DocumentModel>>(
         stream: database.watchAllDocuments,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              _isLoadingDocuments) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final allDocs = snapshot.data ?? [];
+          final allDocs = snapshot.data ?? _initialDocuments;
           final stats = DocumentStats.fromList(allDocs);
 
           // Danh sách bài tập chưa hoàn thành (sắp xếp theo hạn chót gần nhất)
@@ -113,6 +146,7 @@ class _HomePageState extends State<HomePage> {
           return ListView(
             padding: const EdgeInsets.only(bottom: 90),
             children: [
+              const CloudStatusStrip(),
               // 1. BANNER THỐNG KÊ TỔNG QUAN PHONG CÁCH CASHEW
               Container(
                 margin: const EdgeInsets.all(16),
@@ -143,14 +177,19 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${stats.totalDocuments} Tài liệu',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Text(
+                            '${stats.totalDocuments} Tài liệu',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -394,11 +433,15 @@ class _HomePageState extends State<HomePage> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Bài tập cần nộp gấp',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
+                      const Expanded(
+                        child: Text(
+                          'Bài tập cần nộp gấp',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const Spacer(),
