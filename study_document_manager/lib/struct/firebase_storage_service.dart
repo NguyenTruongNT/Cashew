@@ -1,20 +1,25 @@
 import 'dart:async';
 
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 
+
 class FirebaseStorageService {
   FirebaseStorageService._();
+
 
   static final FirebaseStorageService instance = FirebaseStorageService._();
   static const int maxFileSizeBytes = 20 * 1024 * 1024;
 
+
   static const Map<String, String> _contentTypes = {
     'pdf': 'application/pdf',
     'doc': 'application/msword',
+
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'ppt': 'application/vnd.ms-powerpoint',
     'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -82,5 +87,6 @@ class FirebaseStorageService {
 
   Future<void> delete(String storagePath) {
     return FirebaseStorage.instance.ref(storagePath).delete();
+
   }
 }

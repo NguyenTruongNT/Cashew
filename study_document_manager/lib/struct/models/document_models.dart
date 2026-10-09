@@ -219,6 +219,7 @@ class SubjectModel {
   final int colorValue;
   final String iconName;
   final DateTime createdDate;
+  final bool isShared;
 
   SubjectModel({
     required this.id,
@@ -227,6 +228,7 @@ class SubjectModel {
     required this.colorValue,
     required this.iconName,
     required this.createdDate,
+    this.isShared = false,
   });
 
   Color get color => Color(colorValue);
@@ -250,6 +252,7 @@ class SubjectModel {
       colorValue: map['color'] as int,
       iconName: map['icon'] as String,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
     );
   }
 }
@@ -270,6 +273,7 @@ class DocumentModel {
   final DateTime? deadline;
   final DateTime createdDate;
   final DateTime updatedDate;
+  final bool isShared;
 
   // -------- Trường phục vụ đồng bộ Offline-First (schema v3) --------
   /// Checksum MD5/SHA-256 của tệp đính kèm (kiểm tra tính toàn vẹn).
@@ -311,6 +315,7 @@ class DocumentModel {
     this.deadline,
     required this.createdDate,
     required this.updatedDate,
+
     this.checksum,
     this.checksumAlgorithm = 'sha256',
     this.version = 1,
@@ -319,6 +324,7 @@ class DocumentModel {
     this.localPath,
     this.remoteUpdatedAt,
     this.lastSyncedAt,
+
   });
 
   /// Chuyển đổi sang Map để lưu trữ trong SQLite
@@ -373,6 +379,7 @@ class DocumentModel {
           : null,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
       updatedDate: DateTime.fromMillisecondsSinceEpoch(map['updated_date'] as int),
+
       checksum: map['checksum'] as String?,
       checksumAlgorithm: map['checksum_algo'] as String? ?? 'sha256',
       version: (map['version'] as int?) ?? 1,
@@ -385,6 +392,7 @@ class DocumentModel {
       lastSyncedAt: map['last_synced_at'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['last_synced_at'] as int)
           : null,
+
     );
   }
 
@@ -404,6 +412,7 @@ class DocumentModel {
     DateTime? deadline,
     DateTime? createdDate,
     DateTime? updatedDate,
+
     String? checksum,
     String? checksumAlgorithm,
     int? version,
@@ -412,6 +421,7 @@ class DocumentModel {
     String? localPath,
     DateTime? remoteUpdatedAt,
     DateTime? lastSyncedAt,
+
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -428,6 +438,7 @@ class DocumentModel {
       deadline: deadline ?? this.deadline,
       createdDate: createdDate ?? this.createdDate,
       updatedDate: updatedDate ?? DateTime.now(),
+
       checksum: checksum ?? this.checksum,
       checksumAlgorithm: checksumAlgorithm ?? this.checksumAlgorithm,
       version: version ?? this.version,
@@ -436,6 +447,7 @@ class DocumentModel {
       localPath: localPath ?? this.localPath,
       remoteUpdatedAt: remoteUpdatedAt ?? this.remoteUpdatedAt,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+
     );
   }
 }

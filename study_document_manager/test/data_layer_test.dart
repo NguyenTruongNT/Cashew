@@ -72,7 +72,7 @@ void main() {
 
     test('3. Chỉnh sửa thông tin tài liệu (Update)', () async {
       final docs = await db.getAllDocuments();
-      final targetDoc = docs.first;
+      final targetDoc = docs.firstWhere((document) => !document.isShared);
 
       final updatedDoc = targetDoc.copyWith(
         title: 'Tiêu đề đã được sửa thành công',
@@ -88,7 +88,7 @@ void main() {
 
     test('4. Xóa tài liệu học tập (Delete)', () async {
       final docs = await db.getAllDocuments();
-      final targetDoc = docs.first;
+      final targetDoc = docs.firstWhere((document) => !document.isShared);
 
       await db.deleteDocument(targetDoc.id);
 
@@ -142,5 +142,6 @@ void main() {
         await db.insertDocument(testDoc);
       },
     );
+
   });
 }

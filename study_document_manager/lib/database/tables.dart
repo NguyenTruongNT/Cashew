@@ -20,6 +20,7 @@ class SubjectTable {
   static const String colColor = 'color';
   static const String colIcon = 'icon';
   static const String colCreatedDate = 'created_date';
+  static const String colOwnerId = 'owner_id';
 
   /// Câu lệnh SQL tạo bảng Môn học
   static const String createTableSql = '''
@@ -29,9 +30,13 @@ class SubjectTable {
       $colCode TEXT NOT NULL,
       $colColor INTEGER NOT NULL,
       $colIcon TEXT NOT NULL,
-      $colCreatedDate INTEGER NOT NULL
+      $colCreatedDate INTEGER NOT NULL,
+      $colOwnerId TEXT NOT NULL DEFAULT 'local'
     );
   ''';
+
+  static const String createOwnerIndexSql =
+      'CREATE INDEX IF NOT EXISTS idx_subjects_owner ON $tableName ($colOwnerId);';
 }
 
 /// Định nghĩa tên bảng và các cột của bảng Tài liệu học tập (Documents)
@@ -52,6 +57,7 @@ class DocumentTable {
   static const String colDeadline = 'deadline';     // Milliseconds since epoch hoặc null
   static const String colCreatedDate = 'created_date';
   static const String colUpdatedDate = 'updated_date';
+  static const String colOwnerId = 'owner_id';
 
   // -------- Các cột phục vụ đồng bộ Offline-First (schema v3) --------
   static const String colChecksum = 'checksum';             // MD5/SHA-256 của tệp đính kèm
@@ -80,6 +86,7 @@ class DocumentTable {
       $colDeadline INTEGER,
       $colCreatedDate INTEGER NOT NULL,
       $colUpdatedDate INTEGER NOT NULL,
+
       $colChecksum TEXT,
       $colChecksumAlgo TEXT NOT NULL DEFAULT 'sha256',
       $colVersion INTEGER NOT NULL DEFAULT 1,
@@ -88,9 +95,11 @@ class DocumentTable {
       $colLocalPath TEXT,
       $colRemoteUpdatedAt INTEGER,
       $colLastSyncedAt INTEGER,
+
       FOREIGN KEY ($colSubjectId) REFERENCES ${SubjectTable.tableName} (${SubjectTable.colId}) ON DELETE CASCADE
     );
   ''';
+
 
   /// Danh sách cột đồng bộ cần thêm khi nâng cấp từ schema v2 -> v3
   static const List<String> syncColumns = [
@@ -184,4 +193,5 @@ class SyncStateTable {
 
   /// Khóa lưu mốc thời gian đồng bộ gần nhất (dạng millisecondsSinceEpoch).
   static const String keyLastSyncAt = 'last_sync_at';
+
 }

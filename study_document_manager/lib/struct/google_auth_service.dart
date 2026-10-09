@@ -1,51 +1,75 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../firebase_options.dart';
 
 class GoogleAuthService {
   GoogleAuthService._();
 
   static final GoogleAuthService instance = GoogleAuthService._();
-  static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  static Future<void>? _googleSignInInitialization;
 
-  Stream<User?> get authStateChanges =>
-      FirebaseAuth.instance.authStateChanges();
 
-  User? get currentUser => FirebaseAuth.instance.currentUser;
-  bool get isConfigured => Firebase.apps.isNotEmpty;
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  Future<UserCredential?> signInWithGoogle() async {
-    if (kIsWeb) {
-      return FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
+  bool _googleSignInInitialized = false;
+
+  User? get currentUser => _firebaseAuth.currentUser;
+
+  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+
+  bool get isSignedIn => currentUser != null;
+
+  Future<void> _initializeGoogleSignIn() async {
+    if (_googleSignInInitialized || kIsWeb) {
+      return;
     }
 
-    await (_googleSignInInitialization ??= _googleSignIn.initialize(
-      clientId: defaultTargetPlatform == TargetPlatform.iOS
-          ? DefaultFirebaseOptions.ios.iosClientId
-          : null,
-    ));
+    await _googleSignIn.initialize();
+    _googleSignInInitialized = true;
+  }
+
+  Future<UserCredential> signInWithGoogle() async {
     try {
-      final googleUser = await _googleSignIn.authenticate();
-      final idToken = googleUser.authentication.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw StateError('Google Sign-In did not return an ID token.');
+      // Trên Web, Firebase tự mở cửa sổ chọn tài khoản Google.
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+        googleProvider.setCustomParameters(<String, String>{
+          'prompt': 'select_account',
+        });
+
+        return await _firebaseAuth.signInWithPopup(googleProvider);
       }
 
-      final credential = GoogleAuthProvider.credential(idToken: idToken);
-      return await FirebaseAuth.instance.signInWithCredential(credential);
-    } on GoogleSignInException catch (error) {
-      if (error.code == GoogleSignInExceptionCode.canceled) return null;
+      // Trên Android/iOS, sử dụng plugin google_sign_in.
+      await _initializeGoogleSignIn();
+
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+
+      final GoogleSignInAuthentication googleAuthentication =
+          googleUser.authentication;
+
+      final OAuthCredential firebaseCredential = GoogleAuthProvider.credential(
+        idToken: googleAuthentication.idToken,
+      );
+
+      return await _firebaseAuth.signInWithCredential(firebaseCredential);
+    } on FirebaseAuthException {
       rethrow;
+    } catch (error) {
+      throw Exception('Không thể đăng nhập bằng Google: $error');
+
     }
   }
 
   Future<void> signOut() async {
-    await FirebaseAuth.instance.signOut();
-    if (!kIsWeb && _googleSignInInitialization != null) {
+
+    await _firebaseAuth.signOut();
+
+    if (!kIsWeb) {
+
       await _googleSignIn.signOut();
     }
   }
