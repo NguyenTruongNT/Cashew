@@ -69,7 +69,9 @@ class AppDatabase {
         final path = isInMemory ? inMemoryDatabasePath : 'cashew_study_docs.db';
         _db = await openDatabase(
           path,
-          version: 3,
+
+          version: 2,
+
           onCreate: (db, version) async {
             await db.execute(SubjectTable.createTableSql);
             await db.execute(DocumentTable.createTableSql);
@@ -78,7 +80,16 @@ class AppDatabase {
             await _seedDefaultData(db);
             await _seedSharedData(db);
           },
-          onUpgrade: _upgradeDatabase,
+
+          onUpgrade: (db, oldVersion, newVersion) async {
+            if (oldVersion < 2) {
+              await db.execute(
+                'ALTER TABLE ${DocumentTable.tableName} '
+                'ADD COLUMN ${DocumentTable.colStoragePath} TEXT',
+              );
+            }
+          },
+
         );
       } catch (e) {
         debugPrint(
@@ -102,7 +113,9 @@ class AppDatabase {
 
       _db = await openDatabase(
         path,
-        version: 3,
+
+        version: 2,
+
         onCreate: (db, version) async {
           await db.execute(SubjectTable.createTableSql);
           await db.execute(DocumentTable.createTableSql);
@@ -111,7 +124,16 @@ class AppDatabase {
           await _seedDefaultData(db);
           await _seedSharedData(db);
         },
-        onUpgrade: _upgradeDatabase,
+
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await db.execute(
+              'ALTER TABLE ${DocumentTable.tableName} '
+              'ADD COLUMN ${DocumentTable.colStoragePath} TEXT',
+            );
+          }
+        },
+
       );
     }
 

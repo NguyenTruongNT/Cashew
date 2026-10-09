@@ -124,3 +124,53 @@ Kết quả kiểm thử đạt **15/15 test cases pass (100%)**.
 - Giao diện dùng dải màu Indigo–Violet–Blue, có biến thể sáng/tối và giới hạn chiều rộng nội dung trên Chrome để dễ đọc.
 - Trên màn hình nhỏ, các thẻ thống kê tự chuyển thành bố cục hai cột để tránh tràn viền.
 - Khi thêm tài liệu, chọn môn có sẵn từ gợi ý hoặc nhập môn mới theo định dạng `MÃ MÔN - Tên môn`. Môn mới được lưu cùng tài liệu; mã hoặc tên bị trùng sẽ được báo để tránh tạo nhầm môn.
+
+## 🔥 7. Firebase Authentication và Cloud Storage
+
+Ứng dụng kết nối Firebase project `cashew-study-docs-3afed` trên Android, iOS và Web:
+
+- **Firebase Authentication:** đăng nhập/đăng xuất bằng Google, xem trạng thái đăng nhập và hồ sơ cơ bản tại nút tài khoản trên Dashboard.
+- **Cloud Storage:** chọn PDF, Word, PowerPoint, Excel hoặc TXT tối đa 20 MB. File được tải lên `users/{uid}/documents/{documentId}/{fileId}/{fileName}`; tiến trình upload được hiển thị.
+- **SQLite:** tiếp tục lưu metadata cục bộ. Cột `storage_path` chứa đường dẫn Storage; schema được nâng từ phiên bản 1 lên 2 để giữ nguyên dữ liệu cũ. Metadata hiện chưa đồng bộ giữa các thiết bị.
+- **Rules:** `storage.rules` chỉ cho phép chủ sở hữu đã đăng nhập đọc/xóa file và giới hạn loại nội dung/kích thước. Ứng dụng không lưu Download URL có token vào SQLite; không chia sẻ URL tải xuống được tạo khi mở file ra ngoài vì URL dạng token có thể được dùng như liên kết truy cập.
+
+### Cấu hình Firebase Console cần hoàn tất
+
+1. Nhóm trưởng mở **Project settings → Users and permissions** và mời thành viên bằng email Google; chỉ cấp quyền cần thiết để cấu hình project/deploy Rules, không chia sẻ mật khẩu.
+2. Trong **Authentication → Sign-in method**, bật nhà cung cấp **Google** và chọn email hỗ trợ.
+3. Trong **Storage**, tạo default bucket. Kiểm tra gói/billing mà Console yêu cầu cho bucket, chọn region phù hợp (khó đổi sau khi tạo) và cấu hình cảnh báo ngân sách trước khi upload.
+4. Với Android, thêm SHA-1 của debug/release signing key vào app Android trong Firebase Console. Có thể xem fingerprint từ thư mục `android` bằng `.\gradlew signingReport`; sau khi thêm SHA, tải/cập nhật cấu hình Android nếu Firebase yêu cầu.
+5. Web cần cho phép domain đang dùng trong Authentication settings → Authorized domains. iOS Google Sign-In cần URL scheme đã cấu hình trong `ios/Runner/Info.plist`.
+
+### Cấu hình lại máy thành viên hoặc project Firebase
+
+Chạy từ thư mục `study_document_manager`:
+
+```powershell
+firebase login
+dart pub global activate flutterfire_cli
+flutter pub get
+dart pub global run flutterfire_cli:flutterfire configure --project=cashew-study-docs-3afed --platforms=android,ios,web
+```
+
+Không dán URL đăng nhập Google vào PowerShell. Chỉ mở URL trong trình duyệt khi Firebase CLI yêu cầu đăng nhập. Các tệp `lib/firebase_options.dart`, `android/app/google-services.json` và `ios/Runner/GoogleService-Info.plist` gắn ứng dụng với đúng Firebase project.
+
+Sau khi bật/tạo Storage bucket trong Console, triển khai rules từ thư mục ứng dụng:
+
+```powershell
+firebase deploy --only storage --project=cashew-study-docs-3afed
+```
+
+### Kiểm tra luồng demo
+
+1. Chạy app trên Android, iOS hoặc Chrome và đăng nhập bằng Google.
+2. Tạo/chỉnh sửa tài liệu, chọn một file hợp lệ và lưu; xác nhận tiến độ upload hoàn tất.
+3. Kiểm tra file trong Firebase Console dưới thư mục UID tương ứng; mở file từ trang chi tiết.
+4. Thử người dùng khác truy cập file và thử file quá 20 MB hoặc sai loại; Storage Rules phải từ chối.
+5. Xóa tài liệu; ứng dụng xóa object Storage trước rồi mới xóa metadata SQLite. Nếu Storage báo lỗi, metadata được giữ lại và lỗi được báo rõ.
+
+### Báo cáo và slide
+
+- Báo cáo phân tích đủ checklist 1–7: [BAO_CAO_TICH_HOP_CLOUD.md](BAO_CAO_TICH_HOP_CLOUD.md).
+- Slide trình chiếu: [SLIDE_FIREBASE_CLOUD.pptx](SLIDE_FIREBASE_CLOUD.pptx); nội dung có thể chỉnh ở [SLIDE_FIREBASE_CLOUD.md](SLIDE_FIREBASE_CLOUD.md). Thay `[Điền tên nhóm]` và `[Điền tên thành viên]` trước khi nộp.
+- Báo cáo phân biệt phần đã có (Google Authentication, Cloud Storage, SQLite local) với Firestore/đồng bộ metadata là phần mở rộng chưa triển khai. Build/test thành công không thay thế cho kiểm tra đăng nhập, bucket và Rules trên Firebase Console thật.

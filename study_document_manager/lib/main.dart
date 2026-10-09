@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'colors.dart';
 import 'database/app_database.dart';
@@ -22,11 +21,15 @@ import 'struct/firebase_platform_support.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (isFirebaseConfiguredPlatform) {
+
+  final firebaseSupported = kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+  if (firebaseSupported) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    firebaseInitialized = true;
+
   }
 
   // Khởi tạo Database theo quy chuẩn Singleton của Cashew

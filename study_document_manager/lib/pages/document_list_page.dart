@@ -1,4 +1,4 @@
-import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
@@ -128,9 +128,21 @@ class _DocumentListPageState extends State<DocumentListPage> {
       builder: (ctx) => ConfirmDeleteDialog(
         documentTitle: doc.title,
         onConfirm: () async {
-          await DocumentService.deleteDocument(doc.id);
-          if (mounted) {
-            openSnackbar(context, message: 'Đã xóa tài liệu!');
+          try {
+            await DocumentService.deleteDocument(doc.id);
+            if (mounted) openSnackbar(context, message: 'Đã xóa tài liệu!');
+          } on FirebaseException catch (error) {
+            if (mounted) {
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+                isError: true,
+              );
+            }
+          } catch (error) {
+            if (mounted) {
+              openSnackbar(context, message: 'Không thể xóa tài liệu: $error', isError: true);
+            }
           }
         },
       ),

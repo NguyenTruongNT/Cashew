@@ -3,8 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  connectivity_plus
-  file_saver
+
   firebase_auth
   firebase_core
   firebase_storage

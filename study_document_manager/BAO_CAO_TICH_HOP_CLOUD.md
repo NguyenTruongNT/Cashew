@@ -1,213 +1,155 @@
-# Phân tích hệ thống Quản lý tài liệu và đề xuất tích hợp Cloud
+# Phân tích và phương án tích hợp Cloud cho hệ thống Quản lý Tài liệu
 
-> **Phạm vi:** Phân tích mã nguồn hiện có trong `study_document_manager/`, sau đó đề xuất kiến trúc Cloud và lộ trình chuyển đổi.  
-> **Lưu ý:** Các dịch vụ Cloud trong báo cáo là phương án đề xuất, chưa được cấu hình hoặc triển khai trong ứng dụng hiện tại.
+> **Dự án:** Study Document Manager (Flutter)
+> **Firebase project đã cấu hình trong mã nguồn:** `cashew-study-docs-3afed`
+> **Phạm vi:** Phân tích kiến trúc hiện trạng, đánh giá hạn chế, trình bày mô hình Hybrid Cloud và phân biệt rõ phần Firebase đã tích hợp với phần đồng bộ metadata còn là đề xuất.
 
 ## Tóm tắt
 
-Ứng dụng hiện tại là ứng dụng Flutter/Dart quản lý tài liệu học tập, áp dụng cách phân tách Presentation, Struct/Domain và Data theo phong cách Cashew. Các chức năng cốt lõi gồm quản lý tài liệu và môn học, tìm kiếm/lọc/sắp xếp, theo dõi bài tập, đánh dấu yêu thích và mở liên kết tài liệu. Tầng dữ liệu hiện dùng SQLite cục bộ; trên Web có đường chạy SQLite WASM và cơ chế dự phòng In-Memory. Trường `fileUrl` chỉ lưu một chuỗi đường dẫn/liên kết. Mã nguồn chưa thể hiện dịch vụ Backend/API từ xa, đăng nhập người dùng, tải tệp lên hoặc kho tệp tập trung.
+Ứng dụng Flutter hiện quản lý metadata tài liệu/môn học bằng SQLite cục bộ. Bản tích hợp thực tế đã bổ sung Google Authentication và Firebase Cloud Storage cho file trên Android, iOS và Web. Storage Rules giới hạn đường dẫn theo UID, loại MIME khai báo và dung lượng tối đa 20 MiB. Tuy nhiên, metadata vẫn ở SQLite của từng thiết bị: ứng dụng **chưa đồng bộ danh sách tài liệu giữa các thiết bị**, chưa có Firestore và chưa có Backend/API riêng.
 
-Vì vậy, phương án phù hợp là **Hybrid Cloud**: giữ Flutter cùng SQLite cục bộ để cung cấp cache và khả năng làm việc offline; bổ sung API có xác thực, cơ sở dữ liệu Cloud cho metadata và object storage riêng tư cho nội dung tệp. Cách này tận dụng phần giao diện/nghiệp vụ hiện có mà vẫn tạo được lưu trữ tập trung, truy cập từ nhiều thiết bị và khả năng mở rộng.
+Phương án phù hợp với trạng thái và checklist là **Hybrid Cloud**: giữ Flutter + SQLite làm giao diện và dữ liệu local; dùng Firebase Authentication để xác thực và Cloud Storage để lưu file; nếu cần đồng bộ metadata đa thiết bị, bổ sung Firestore cùng quy tắc bảo mật và quy trình đồng bộ ở giai đoạn tiếp theo. Firebase là dịch vụ Public Cloud; SQLite vẫn là thành phần chạy trên thiết bị. Đây là phương án Firebase nhất quán với phần tích hợp thực hành, không nhầm lẫn với phương án AWS độc lập.
 
-## 1. Phân tích các thành phần cốt lõi hiện có
+## 1. Thành phần cốt lõi và hiện trạng
 
-### 1.1 Frontend / Presentation
-
-| Thành phần | Hiện trạng và trách nhiệm |
-|---|---|
-| Nền tảng UI | Flutter/Dart trong `lib/`, với cấu hình theme sáng/tối và theme theo hệ thống tại `lib/main.dart`. Có cấu hình Web trong `web/` và mã nguồn nền tảng desktop/mobile. |
-| Màn hình | `lib/pages/home_page.dart` tổng hợp thống kê, bài tập chưa hoàn thành, tài liệu gần đây; `document_list_page.dart` hiển thị danh sách; `add_edit_document_page.dart` tạo/sửa tài liệu và nhập môn học; `document_detail_page.dart` xem chi tiết và mở liên kết; `document_search_page.dart` phục vụ tìm kiếm. |
-| Thành phần dùng lại | `lib/widgets/` có thẻ tài liệu, thanh tìm kiếm, bộ lọc, form field, khung trang và hộp thoại xác nhận xóa. |
-| Cập nhật UI | Màn hình chính lắng nghe stream tài liệu/môn học từ Data layer; trạng thái bộ lọc chia sẻ dùng `ValueNotifier` trong `lib/struct/document_global.dart`. |
-| Biên tích hợp hiện tại | Form tài liệu nhận đường dẫn/liên kết qua trường văn bản; màn hình chi tiết dùng `url_launcher` để mở URL hoặc đường dẫn tệp. Chưa có giao diện chọn tệp hay tải tệp lên Cloud trong mã nguồn đã khảo sát. |
-
-**Đánh giá:** Tầng UI đã tách khỏi truy cập SQLite ở mức nhất định và có thể giữ lại phần lớn. Khi thêm Cloud, UI cần bổ sung trạng thái upload/download, tiến độ, lỗi mạng, đăng nhập và đồng bộ; không nên gọi SDK lưu trữ Cloud trực tiếp từ mọi màn hình.
-
-### 1.2 Backend / xử lý nghiệp vụ
-
-Ứng dụng **chưa có Backend server/API riêng**. Luồng nghiệp vụ hiện chạy ngay trong ứng dụng:
-
-- `lib/struct/document_service.dart` kiểm tra tiêu đề và URL, gọi CRUD tới biến `database`, đồng thời lọc, sắp xếp và tính thống kê.
-- `lib/database/app_database.dart` đóng vai trò DAO/data engine, mở SQLite và cung cấp CRUD, truy vấn cùng broadcast streams.
-- `lib/functions.dart` và các widget hỗ trợ điều hướng/thông báo giao diện.
-
-Do đó, `DocumentService` là nghiệp vụ phía client chứ không phải Backend dùng chung. Các quy tắc hiện tại chỉ có hiệu lực đầy đủ ở client; khi nhiều thiết bị hoặc người dùng cùng truy cập, cần chuyển kiểm tra quyền, xác thực và quy tắc dữ liệu quan trọng sang API tin cậy phía server.
-
-### 1.3 Database / metadata
-
-`lib/database/tables.dart` khai báo hai bảng SQLite:
-
-- **`subjects`**: ID, tên, mã, màu, biểu tượng và ngày tạo môn học.
-- **`documents`**: ID, tiêu đề, `subject_id`, loại tài liệu, ghi chú, `file_url`, tags, trạng thái, ưu tiên, yêu thích, deadline và thời gian tạo/cập nhật. `subject_id` tham chiếu môn học với `ON DELETE CASCADE`.
-
-`DocumentModel` và `SubjectModel` trong `lib/struct/models/document_models.dart` chuyển đổi dữ liệu qua `toMap`/`fromMap`. Tìm kiếm SQLite hiện dùng `LIKE` trên tiêu đề, ghi chú và tags; bộ lọc hỗ trợ môn học, loại, yêu thích và thứ tự theo thời gian cập nhật. Các tags được lưu thành chuỗi phân tách dấu phẩy.
-
-SQLite được mở trong `AppDatabase.init()`: trên desktop/mobile, file DB nằm trong application documents directory; trên Web, ứng dụng thử SQLite WASM và nếu không khởi tạo được thì fallback sang bộ nhớ. Fallback bộ nhớ làm dữ liệu thay đổi trong phiên không được lưu bền vững sau khi đóng ứng dụng/trang.
-
-### 1.4 File Storage / nội dung tệp
-
-Hiện tại, **chưa có thành phần File Storage thực thụ**:
-
-- `documents.file_url`/`DocumentModel.fileUrl` chỉ lưu chuỗi liên kết hoặc đường dẫn. Dữ liệu mẫu có cả URL HTTPS và một đường dẫn dạng `assets/...`.
-- Form nhập/sửa chỉ cập nhật chuỗi này; màn hình chi tiết mở liên kết bằng `url_launcher`.
-- Chưa thấy mã chọn tệp, đọc byte, upload/download, kiểm tra quyền tệp, hay lưu nội dung tệp trong SQLite hoặc dịch vụ ngoài.
-
-Vì thế, tài liệu thật đang được lưu ở nơi khác do người dùng cung cấp liên kết; DB chỉ lưu metadata/tham chiếu. Không nên mô tả hệ thống hiện tại như đã có kho tệp cục bộ hoặc Cloud.
-
-## 2. Các điểm nghẽn của mô hình truyền thống hiện tại
-
-Ở phạm vi mã nguồn này, “truyền thống” là ứng dụng và DB chạy cục bộ trên thiết bị, không phải một server on-premises đã được triển khai riêng. Các hạn chế quan sát được:
-
-1. **Dữ liệu phân tán theo thiết bị:** Mỗi bản cài có DB riêng. Sửa trên một thiết bị không tự xuất hiện trên thiết bị khác; đổi/mất thiết bị có nguy cơ mất dữ liệu nếu chưa sao lưu.
-2. **Không có chia sẻ và phân quyền tập trung:** Chưa có tài khoản, danh tính, vai trò, owner hay API để kiểm soát truy cập nhiều người dùng. Một đường dẫn file công khai/được chia sẻ ngoài ứng dụng không được bảo vệ bởi ứng dụng.
-3. **Không quản lý tập trung nội dung tệp:** DB chỉ có `file_url`; ứng dụng không cung cấp upload/download, quota, phiên bản tệp hoặc chính sách vòng đời. Các URL ngoài có thể hết hạn, đổi quyền hoặc bị xóa mà DB không biết.
-4. **Giới hạn khả năng mở rộng và cộng tác:** SQLite đơn thiết bị đáp ứng tốt ứng dụng cá nhân nhỏ, nhưng không phải nguồn dữ liệu trung tâm cho nhiều người dùng đồng thời, đồng bộ hoặc báo cáo tổ chức.
-5. **Tìm kiếm và vận hành phụ thuộc thiết bị:** Truy vấn chỉ dựa trên SQLite/in-memory; không có index tìm kiếm tập trung, API quản trị, giám sát dịch vụ hoặc quy trình phục hồi dữ liệu tập trung.
-6. **Rủi ro riêng của Web fallback:** Nếu Web không mở được SQLite WASM, fallback lưu dữ liệu trong RAM; dữ liệu phiên không đảm bảo tồn tại qua lần mở sau. Đây là suy giảm độ bền dữ liệu đáng lưu ý.
-7. **Bảo mật và sao lưu chưa được quản lý ở tầng dịch vụ:** Trong mã nguồn hiện tại chưa thấy đăng nhập, mã hóa DB do ứng dụng quản lý, chính sách backup/restore, audit log hoặc kiểm soát truy cập đối với file. Điều đó không khẳng định thiết bị không có biện pháp hệ điều hành, mà chỉ có nghĩa ứng dụng chưa thể hiện các khả năng này.
-
-## 3. Mô hình và dịch vụ Cloud được lựa chọn
-
-### 3.1 Lựa chọn: Hybrid Cloud
-
-Chọn **Hybrid Cloud** thay vì chuyển toàn bộ ứng dụng sang Cloud hoặc chỉ dùng hạ tầng tại chỗ:
-
-- **Phần local:** Flutter UI, SQLite cache/offline và hàng đợi thay đổi chưa đồng bộ.
-- **Phần Cloud:** API, xác thực, metadata dùng chung và lưu nội dung file tập trung.
-- **Lý do:** Tận dụng các màn hình, model và nghiệp vụ client hiện có; hỗ trợ làm việc khi mạng chập chờn; đồng thời giải quyết nhu cầu đồng bộ, backup và truy cập từ xa. Public Cloud được dùng cho dịch vụ managed; ứng dụng vẫn giữ thành phần local. Phương án này không yêu cầu tự dựng Private Cloud.
-
-### 3.2 Dịch vụ AWS đề xuất
-
-| Nhu cầu | Dịch vụ đề xuất | Vai trò |
+| Thành phần | Hiện trạng trong ứng dụng | Nhận xét |
 |---|---|---|
-| Xác thực | **Amazon Cognito User Pools** | Đăng ký/đăng nhập, phát token; API xác minh danh tính. Nếu trường học có SSO, có thể tích hợp liên kết danh tính ở giai đoạn sau. |
-| API Backend | **Amazon API Gateway + AWS Lambda** | Cung cấp HTTPS endpoints cho CRUD, tìm kiếm, xin URL upload/download có thời hạn và kiểm tra quyền. Lambda thực thi quy tắc phía server; không nhúng thông tin xác thực AWS trong ứng dụng Flutter. |
-| Cơ sở dữ liệu | **Amazon RDS for PostgreSQL** | Lưu subjects, documents, owner/ACL, S3 object key, checksum, kích thước, MIME type và phiên bản đồng bộ. Mô hình quan hệ gần với schema SQLite hiện có. |
-| Lưu tệp | **Amazon S3 private bucket** | Lưu byte của tài liệu tách khỏi DB metadata; bật Block Public Access, mã hóa SSE-KMS, versioning và lifecycle phù hợp. |
-| Phân phối (tùy chọn) | **Amazon CloudFront** | Tăng tốc tải tệp ở nhiều khu vực nếu có nhu cầu; chỉ dùng với cơ chế truy cập riêng tư phù hợp như URL/cookie đã ký, không mở bucket công khai. |
-| Giám sát và khóa | **Amazon CloudWatch + AWS KMS** | Theo dõi lỗi/độ trễ API, cảnh báo và quản lý khóa mã hóa. Không ghi token hay URL ký có thể truy cập tệp vào log. |
+| **Frontend** | Flutter/Dart. `lib/pages/` có Dashboard, danh sách, tìm kiếm, chi tiết, form thêm/sửa và trang tài khoản. | Dùng chung cho Android, iOS và Web; hiển thị trạng thái đăng nhập và tiến độ upload. |
+| **Backend / nghiệp vụ** | Chưa có server/API riêng. `DocumentService` thực thi kiểm tra và gọi SQLite trong app. Firebase SDK được gọi từ lớp service phía client. | Firebase Authentication và Storage cung cấp dịch vụ managed, nhưng không biến app thành Backend server. Không có Cloud Function xử lý nghiệp vụ riêng. |
+| **Database / metadata** | SQLite lưu `subjects`, `documents` cùng thuộc tính tài liệu. `storage_path` được thêm qua migration schema version 2. | Database vẫn cục bộ; cùng tài khoản trên thiết bị khác không tự thấy metadata. Firebase không lưu metadata trong phiên bản hiện tại. |
+| **File Storage** | Firebase Cloud Storage lưu nội dung file theo `users/{uid}/documents/{documentId}/{fileId}/{fileName}`. SQLite chỉ giữ `storage_path`, không giữ byte file hay Download URL. | Upload trực tiếp từ app, tối đa 20 MiB, hỗ trợ PDF/Office/TXT; đọc/xóa cần đăng nhập đúng UID theo Rules. |
+| **Danh tính** | Firebase Authentication với Google Sign-In trên Android, iOS và Web. | SHA-1 Android, cấu hình iOS và Authorized Domain Web phải khớp Firebase Console. |
 
-**Mô hình lưu dữ liệu đề xuất:** PostgreSQL lưu metadata và object key, không lưu nội dung file dạng BLOB. S3 giữ file. Ví dụ một document có `id`, `owner_id`, `subject_id`, metadata, `object_key`, `content_type`, `size_bytes`, `checksum`, `version` và timestamps. Mọi bản ghi và object key đều phải gắn với phạm vi người dùng/nhóm được cấp quyền.
+Các điểm triển khai chính: `lib/main.dart` khởi tạo Firebase trên Android/iOS/Web; `lib/struct/google_auth_service.dart` xử lý đăng nhập; `lib/struct/firebase_storage_service.dart` xử lý upload/download URL/xóa; `lib/database/app_database.dart` quản lý SQLite và migration; `storage.rules` giới hạn truy cập Storage.
 
-## 4. Kiến trúc tích hợp và luồng dữ liệu
+## 2. Hạn chế của mô hình cục bộ/truyền thống
 
-### 4.1 Sơ đồ
+Các điểm dưới đây mô tả mô hình trước khi bổ sung Firebase và các giới hạn vẫn còn trong bản hiện tại:
+
+1. **Dữ liệu phân tán theo thiết bị:** SQLite không tự đồng bộ. Hỏng/mất thiết bị có thể làm mất metadata nếu không sao lưu.
+2. **Không có Backend/API dùng chung:** kiểm tra nghiệp vụ chạy ở client; chưa có service trung tâm để phân quyền metadata, audit hoặc áp dụng chính sách cho mọi client.
+3. **Không có quản lý file tập trung trước tích hợp:** chỉ lưu `fileUrl` tự nhập; liên kết bên ngoài có thể hết hạn, đổi quyền hoặc bị xóa.
+4. **Giới hạn cộng tác và mở rộng:** không có dữ liệu metadata trung tâm để hỗ trợ nhiều thiết bị, nhiều người dùng, chia sẻ hoặc báo cáo.
+5. **Sao lưu/vận hành chưa tập trung:** mã ứng dụng không triển khai backup/restore metadata, giám sát Backend hay lịch sử truy cập tập trung.
+6. **Web có giới hạn độ bền:** nếu SQLite WASM không khởi động được, hiện có In-Memory fallback; dữ liệu fallback chỉ tồn tại trong phiên.
+7. **Giới hạn còn lại sau tích hợp Firebase:** file đã ở Cloud và được bảo vệ bằng Rules, nhưng metadata vẫn ở SQLite local. Vì thế đăng nhập trên thiết bị khác không đồng nghĩa tài liệu tự xuất hiện ở đó.
+
+## 3. Mô hình Cloud và dịch vụ được lựa chọn
+
+### Mô hình: Hybrid Cloud
+
+- **Local:** ứng dụng Flutter và SQLite, tiếp tục cung cấp CRUD, tìm kiếm và hiển thị metadata cục bộ.
+- **Public Cloud:** Firebase Authentication (Google) cho danh tính và Firebase Cloud Storage cho tệp.
+- **Giai đoạn mở rộng:** Cloud Firestore có thể lưu metadata dùng chung; cần bổ sung thiết kế đồng bộ, xử lý xung đột, migration dữ liệu và Firestore Security Rules trước khi triển khai. Firestore **chưa được tích hợp trong code hiện tại**.
+
+Hybrid phù hợp vì tận dụng dữ liệu local hiện có nhưng bổ sung danh tính và kho file Cloud. Đây là kiến trúc lai local + Public Cloud; không có máy chủ Private Cloud/on-premises riêng.
+
+### Dịch vụ và vai trò
+
+| Dịch vụ | Trạng thái | Vai trò / lưu ý |
+|---|---|---|
+| **Firebase Authentication** | Đã tích hợp trong app; cần bật Google provider ở Console | Đăng nhập, cung cấp UID dùng để phân vùng file. |
+| **Cloud Storage for Firebase** | Đã tích hợp trong app; bucket và Rules cần được thiết lập/deploy trên Console | Lưu byte tài liệu. Bucket không được coi là công khai; quyền dựa trên Firebase Auth + Storage Rules. |
+| **Cloud Firestore** | Đề xuất giai đoạn tiếp theo, chưa nằm trong app | Lưu metadata dùng chung nếu mục tiêu là đa thiết bị; cần Rules theo owner/nhóm và cơ chế đồng bộ rõ ràng. |
+| **Firebase App Check** | Khuyến nghị đánh giá trước khi phát hành thật | Giúp giảm client không hợp lệ; không thay thế Authentication hoặc Security Rules. |
+| **Cloud Monitoring/Budget alerts** | Thiết lập vận hành ngoài mã nguồn | Theo dõi usage/chi phí; budget alert không phải hạn mức cứng ngăn phát sinh phí. |
+
+
+### 4.1 Kiến trúc hiện thực trong prototype
 
 ```mermaid
 flowchart LR
-    U[Người dùng] --> APP[Flutter App]
-    APP <--> CACHE[(SQLite local cache<br/>outbox đồng bộ)]
-    APP -->|Đăng nhập| AUTH[Amazon Cognito]
-    AUTH -->|Access token| APP
-    APP -->|HTTPS + token<br/>CRUD metadata / yêu cầu URL ký| API[API Gateway]
-    API --> FN[AWS Lambda<br/>xác thực quyền và nghiệp vụ]
-    FN <--> DB[(Amazon RDS PostgreSQL<br/>metadata + ACL)]
-    FN -->|URL ký có thời hạn| APP
-    APP -->|Upload/Download HTTPS trực tiếp| S3[(Amazon S3 private<br/>file objects, SSE-KMS)]
-    S3 -.->|Tùy chọn: phân phối riêng tư| CDN[Amazon CloudFront]
-    FN --> MON[CloudWatch]
+    USER[Người dùng] --> APP[Ứng dụng Flutter]
+    APP <--> DB[(SQLite local<br/>metadata + storage_path)]
+    APP -->|Google Sign-In| AUTH[Firebase Authentication]
+    AUTH -->|Firebase UID / session| APP
+    APP -->|Upload / đọc / xóa theo UID| RULES[Firebase Storage Rules]
+    RULES --> BUCKET[(Cloud Storage<br/>file objects)]
+    APP -.->|Chưa đồng bộ metadata| NOTE[Thiết bị khác]
 ```
 
-### 4.2 Luồng tải tài liệu lên
+### 4.2 Kiến trúc đích nếu cần metadata đa thiết bị
 
-1. Người dùng đăng nhập; Flutter giữ token phiên theo cơ chế bảo mật của nền tảng và tiếp tục dùng SQLite cache để hiển thị dữ liệu đã đồng bộ.
-2. Người dùng chọn file (cần bổ sung file picker), nhập metadata và gửi yêu cầu tạo phiên upload qua API kèm access token.
-3. API xác thực token, kiểm tra quyền, giới hạn kích thước/loại file, tạo object key không đoán được và trả về URL ký có thời hạn cho một thao tác cụ thể.
-4. Flutter tải byte trực tiếp tới S3 qua HTTPS bằng URL ký; file không đi xuyên Lambda/API nên tránh giới hạn payload của API và giảm tải Backend.
-5. Ứng dụng gọi API hoàn tất upload. Backend xác minh object tồn tại và metadata cần thiết, sau đó ghi `object_key`, checksum, kích thước và các thuộc tính liên quan vào PostgreSQL.
-6. API trả metadata; ứng dụng cập nhật cache SQLite và stream UI. Khi upload lỗi giữa chừng, UI báo lỗi và cho phép thử lại/xóa phiên upload dở theo chính sách.
+```mermaid
+flowchart LR
+    USER[Người dùng] --> APP[Flutter]
+    APP <--> LOCAL[(SQLite cache)]
+    APP --> AUTH[Firebase Authentication]
+    AUTH --> APP
+    APP <-->|Metadata CRUD + đồng bộ| FS[(Cloud Firestore<br/>đề xuất, chưa tích hợp)]
+    APP -->|Upload / tải file| RULES[Cloud Storage Rules]
+    RULES --> STORAGE[(Firebase Cloud Storage)]
+```
 
-### 4.3 Luồng mở hoặc tải tài liệu
+Kiến trúc đích không được hiểu là đã triển khai. Trước khi bật Firestore cần xác định owner/nhóm, quy tắc quyền, chiến lược merge/xung đột offline, schema và migration; tránh ghi song song hai nguồn mà không có quy tắc nhất quán.
 
-1. Ứng dụng yêu cầu metadata/tài liệu theo ID qua API.
-2. Backend xác thực người dùng và kiểm tra quyền sở hữu/chia sẻ trước khi tạo URL GET ký có thời hạn; không trả bucket/object công khai.
-3. Ứng dụng tải/mở file trực tiếp từ S3 qua URL ký hoặc qua CloudFront riêng tư nếu được bật. URL tạm thời không nên được lưu làm `fileUrl` cố định trong SQLite.
-4. SQLite giữ metadata cần thiết và có thể giữ trạng thái/đường dẫn cache local theo chính sách. Truy cập file chưa cache khi offline cần thông báo rõ cho người dùng.
+### 4.3 Luồng dữ liệu đã có
 
-### 4.4 Đồng bộ CRUD và tìm kiếm
+1. Người dùng đăng nhập Google; Firebase Authentication cấp phiên và UID.
+2. Khi tạo/sửa tài liệu và chọn tệp, app kiểm tra trạng thái đăng nhập, loại file và giới hạn 20 MiB.
+3. App tải bytes trực tiếp lên Storage tại đường dẫn UID-scoped; Rules cho phép chủ sở hữu đã đăng nhập và từ chối loại MIME/kích thước không được phép.
+4. App lưu `storage_path` vào SQLite cùng metadata. Download URL chỉ được lấy khi mở file, không lưu vào DB.
+5. Khi xóa tài liệu, app xóa object Cloud trước, sau đó mới xóa metadata SQLite. Nếu Storage từ chối/xảy ra lỗi, metadata được giữ để tránh mất tham chiếu tới file còn tồn tại.
 
-- Flutter gửi CRUD metadata qua API; Backend kiểm tra đầu vào, quyền và tính toàn vẹn quan hệ trước khi ghi PostgreSQL.
-- SQLite lưu bản sao cục bộ để tải màn hình nhanh. Khi offline, ghi thay đổi vào outbox rồi đồng bộ khi mạng trở lại; dùng `updated_at`/`version` để phát hiện xung đột và không âm thầm ghi đè thay đổi mới hơn.
-- Tìm kiếm online thực thi ở API/PostgreSQL với phân trang và chỉ trả bản ghi người dùng được phép xem. Tìm kiếm cache offline chỉ giới hạn trên dữ liệu đã đồng bộ.
-- Xóa metadata và file cần có chính sách nhất quán, gồm xóa mềm/khôi phục nếu cần, xử lý object S3 và tôn trọng versioning/retention.
+### 4.4 Luồng dữ liệu đề xuất cho Firestore
 
-### 4.5 Phần cần thay đổi trong mã nguồn
 
-1. Tách hợp đồng truy cập dữ liệu/repository khỏi `AppDatabase` và biến global `database`; hiện `DocumentService` gọi trực tiếp singleton SQLite. Cung cấp triển khai local, remote và đồng bộ thay vì đưa lời gọi AWS vào widget.
-2. Bổ sung lớp API client, xác thực/session, xử lý token hết hạn, retry có giới hạn và thông báo lỗi mạng rõ ràng.
-3. Mở rộng schema/model với `ownerId`, `objectKey`, metadata file, `version`/`syncStatus`; thêm migration SQLite có phiên bản thay vì giả định schema version 1 là đủ.
-4. Bổ sung chọn tệp, upload/download có tiến độ, kiểm tra giới hạn và xử lý URL ký tạm thời.
-5. Xây API/Backend và hạ tầng Cloud, bao gồm phân quyền, migration DB, chính sách S3, khóa, log, backup và cảnh báo.
-6. Không đưa secret AWS access key vào ứng dụng Flutter. Client chỉ sử dụng token người dùng và URL ký có phạm vi, thời hạn, phương thức HTTP cụ thể.
+### So sánh trước và sau
 
-## 5. Đánh giá tác động sau khi tích hợp
+| Tiêu chí | Trước tích hợp | Prototype hiện tại | Đích mở rộng nếu dùng Firestore |
+|---|---|---|---|
+| Metadata | SQLite riêng trên thiết bị | Vẫn SQLite riêng trên thiết bị | Firestore làm metadata dùng chung; SQLite có thể làm cache |
+| File | Chỉ URL/đường dẫn do người dùng nhập | Firebase Storage, giới hạn 20 MiB và UID Rules | Giữ Storage, bổ sung metadata/object lifecycle |
+| Đăng nhập | Chưa có | Google qua Firebase Auth (Console phải bật) | Firebase Auth, thêm chính sách tài khoản/nhóm |
+| Truy cập đa thiết bị | Không đồng bộ | File Cloud gắn UID; metadata không đồng bộ | Có metadata chung sau khi thiết kế và triển khai Firestore |
+| Vận hành | Chủ yếu local | Phụ thuộc mạng/bucket/Rules cho thao tác file | Thêm chi phí reads/writes, đồng bộ và kiểm thử xung đột |
 
-### 5.1 So sánh trước và sau
+### Bảo mật
 
-| Tiêu chí | Trước tích hợp: cục bộ/truyền thống | Sau tích hợp: Hybrid Cloud đề xuất |
+- **Đã có:** Firebase Auth; Storage Rules yêu cầu UID chủ sở hữu trên đường dẫn; giới hạn dung lượng và tập MIME; không lưu Download URL có token vào SQLite.
+- **Cần lưu ý:** file tải bằng `getDownloadURL()` có URL token dạng bearer. Không chia sẻ URL ra ngoài; người có URL có thể truy cập cho tới khi token bị thu hồi/thay đổi theo cơ chế Firebase.
+- **Giới hạn kiểm tra file:** extension/MIME khai báo ở client không xác thực nội dung thật. Không dùng giới hạn này thay cho quét file trong môi trường rủi ro cao.
+- **Cần làm trước release:** bật provider, deploy Rules, thêm SHA-1, giới hạn quyền thành viên, bật App Check nếu phù hợp, rà soát logging và thử truy cập bằng tài khoản khác.
+- **Firestore:** nếu thêm, phải viết và kiểm thử Firestore Rules riêng; Storage Rules không bảo vệ Firestore.
+
+### Chi phí
+
+- Firebase usage và yêu cầu billing thay đổi theo loại bucket, region và chính sách hiện hành của Google. Kiểm tra yêu cầu gói hiển thị trong Firebase Console trước khi tạo bucket; không xem con số/điều kiện trong hướng dẫn cũ là cam kết giá.
+- Các nguồn chi phí chính: dung lượng lưu trữ, upload/download, thao tác Storage, Firestore reads/writes (nếu bật), network egress và dịch vụ phụ trợ.
+- Trước demo dùng file nhỏ/dữ liệu giả, xem usage/billing trong Console và tạo budget alert. Budget alert chỉ cảnh báo, không tự chặn chi tiêu.
+- Không thể đưa ước tính tiền đáng tin nếu chưa biết số người dùng, dung lượng, lượt xem/tải, region và thời gian lưu.
+
+### Hiệu suất
+
+- Tệp được truyền trực tiếp từ app tới Cloud Storage thay vì qua server ứng dụng; progress được hiển thị.
+- Mở/xóa file cần mạng và quyền hợp lệ. CRUD/tìm kiếm metadata vẫn chạy trên SQLite local.
+- Firebase Storage giải quyết nơi lưu file và truy cập cloud, nhưng không tự cung cấp đồng bộ metadata, offline sync hay backup SQLite.
+- Kết nối yếu làm chậm upload/download; giới hạn kích thước, báo lỗi, progress và thử nghiệm trên mạng thực tế là cần thiết.
+
+## 6. Cấu hình nhóm và kiểm thử vận hành
+
+1. Chủ project cấp quyền cần thiết cho thành viên trong Google/Firebase Cloud project; không chia sẻ mật khẩu tài khoản cá nhân.
+2. Bật Authentication → Google; tạo bucket sau khi xác nhận region, billing và cảnh báo ngân sách.
+3. Thêm SHA-1 cho Android; kiểm tra iOS URL scheme/client ID; cho phép domain đang dùng cho Web.
+4. Chạy `firebase deploy --only storage --project=cashew-study-docs-3afed` từ `study_document_manager/` để áp dụng `storage.rules`.
+5. Chạy app trên Android hoặc Chrome: đăng nhập, upload file nhỏ, kiểm tra đường dẫn UID, mở file, xóa file; thử đăng xuất, file không hỗ trợ, file quá 20 MiB và UID khác.
+6. Kiểm tra Console để chắc chắn object đã bị xóa. Thử bằng UID khác phải không đọc/xóa được object.
+7. Ghi nhận kết quả thử nghiệm thực tế vào biên bản nhóm. Build/test local không xác nhận rằng Google provider, billing, bucket và Rules đã bật trên Firebase Console.
+
+Hướng dẫn thao tác Console chi tiết nằm trong `README.md`. Mã nguồn slide checklist 7 và bản trình chiếu là `SLIDE_FIREBASE_CLOUD.md` và `SLIDE_FIREBASE_CLOUD.pptx`.
+
+## 7. Đối chiếu checklist bài tập
+
+| # | Yêu cầu | Đáp ứng / giới hạn được nêu |
 |---|---|---|
-| Giao diện và chức năng | Flutter; quản lý môn/tài liệu, lọc, tìm kiếm, trạng thái và URL. | Giữ phần lớn giao diện; bổ sung xác thực, upload/download, trạng thái đồng bộ và xử lý lỗi mạng. |
-| Metadata | SQLite riêng từng thiết bị; Web có thể fallback sang RAM nếu SQLite WASM lỗi. | PostgreSQL làm nguồn metadata dùng chung; SQLite tiếp tục làm cache và hỗ trợ offline. |
-| Nội dung tệp | Không có kho tệp của ứng dụng; chỉ lưu `fileUrl` do người dùng nhập. | S3 riêng tư lưu nội dung; DB lưu metadata và object key. |
-| Truy cập từ xa/đa thiết bị | Không có đồng bộ trung tâm tự động. | Truy cập qua API có xác thực; dữ liệu có thể đồng bộ qua các thiết bị theo quyền. |
-| Mở rộng | Phụ thuộc từng thiết bị và DB cục bộ. | Có thể tăng tài nguyên dịch vụ managed theo tải; cần thiết kế giới hạn, quota và phân trang. |
-| Sao lưu/khôi phục | Chưa thấy backup/restore tập trung trong mã nguồn. | Có thể cấu hình backup DB, versioning/lifecycle S3 và kiểm thử phục hồi. |
-| Phụ thuộc kết nối | CRUD local hoạt động khi không có mạng, ngoại trừ file/link ngoài. | Đọc cache và ghi outbox có thể hoạt động offline; đồng bộ và file chưa cache cần mạng. |
-| Bảo mật | Chưa thấy xác thực/phân quyền hoặc kiểm soát file tại Backend trong mã nguồn. | Có danh tính, kiểm quyền phía server, mã hóa và audit/monitoring nếu được cấu hình đúng; phát sinh trách nhiệm quản trị Cloud. |
-| Chi phí | Không có phí Cloud định kỳ cho dịch vụ chưa triển khai; dùng dung lượng thiết bị. | Chi phí theo DB/API/compute/storage/requests/egress/logs/backup; có thể khó dự đoán nếu không đặt quota và cảnh báo. |
+| 1 | Phân tích Frontend, Backend, Database, File Storage | Mục 1 phân tích cấu trúc code và nêu rõ chưa có Backend server. |
+| 2 | Hạn chế hệ thống truyền thống | Mục 2 phân tích dữ liệu local phân tán, file/link, sao lưu, mở rộng và Web fallback. |
+| 3 | Chọn Cloud model và dịch vụ cụ thể | Mục 3 chọn Hybrid + Firebase Auth/Storage; Firestore được đánh dấu là đề xuất, không nói đã tích hợp. |
+| 4 | Sơ đồ kiến trúc và luồng dữ liệu | Mục 4 có sơ đồ prototype, sơ đồ đích và các bước dữ liệu. |
+| 5 | Bảo mật, chi phí, hiệu suất | Mục 5 đánh giá lợi ích, giới hạn, chi phí theo usage và phụ thuộc mạng. |
+| 6 | Firebase Google Sign-In và Storage | Code app có Auth/Storage; các thao tác Console, billing và deploy Rules vẫn cần nhóm thực hiện/ghi nhận. |
+| 7 | Slide Firebase và setup tài khoản nhóm | Có bản trình chiếu và source slide; thay placeholder tên nhóm/thành viên trước khi nộp. |
 
-### 5.2 Bảo mật
+## Kết luận
 
-**Lợi ích tiềm năng**
-
-- Xác thực tập trung và phân quyền theo người dùng/nhóm ở Backend.
-- HTTPS cho API và truyền tệp; S3 private cùng SSE-KMS hỗ trợ bảo vệ dữ liệu lưu trữ.
-- URL ký có thời hạn giảm nhu cầu cấp quyền công khai cho object.
-- Có thể bổ sung CloudWatch/audit log, backup, versioning và cảnh báo truy cập bất thường.
-
-**Rủi ro và điều kiện cần đáp ứng**
-
-- Cloud không tự động bảo mật ứng dụng. Cấu hình sai bucket, IAM, API hoặc URL ký có thể làm lộ tài liệu.
-- Backend phải kiểm tra quyền trên từng thao tác, không tin `owner_id` do client gửi. URL ký phải sống ngắn, đúng object/method, không log hoặc lưu lâu trên client.
-- Cần giới hạn loại/kích thước file, kiểm tra tên/MIME thực tế, chống path/object key injection; cân nhắc quét malware nếu file được chia sẻ rộng.
-- Quản lý quyền tối thiểu, khóa KMS, rotation, backup/restore, retention và quy trình xóa dữ liệu. Chỉ giữ log cần thiết, không ghi token, nội dung riêng tư hoặc URL truy cập.
-- SQLite/cache trên thiết bị có thể chứa metadata nhạy cảm; cần cân nhắc secure storage cho token, khóa thiết bị và chính sách xóa cache khi đăng xuất.
-- Xác định vùng lưu trữ và thời hạn lưu theo yêu cầu tổ chức/pháp luật trước khi nhập tài liệu thật lên Cloud.
-
-### 5.3 Chi phí
-
-Chi phí không thể kết luận chỉ từ mã nguồn; phụ thuộc khu vực triển khai, số người dùng, tổng GB, kích thước file, lượt API, lượt GET/PUT, lưu lượng tải xuống, thời hạn backup và yêu cầu khả dụng.
-
-- **Tăng chi phí:** RDS/PostgreSQL (thường là khoản nền đáng kể), API Gateway/Lambda, S3 theo dung lượng và request, KMS, log/monitoring, backup, data transfer/egress và CloudFront nếu dùng.
-- **Cơ hội tối ưu:** lifecycle chuyển file cũ sang lớp lưu trữ phù hợp, quota theo người dùng, giới hạn upload, phân trang, cache metadata, cảnh báo ngân sách; bật CloudFront chỉ khi lưu lượng/địa lý chứng minh hiệu quả.
-- **Khuyến nghị giai đoạn sinh viên:** lập ước tính theo workload dự kiến trong AWS Pricing Calculator, tạo budget alert, giới hạn dịch vụ và thử nghiệm bằng dữ liệu giả. Không đặt số tiền cố định khi chưa có giả định về vùng, dung lượng và lượt truy cập.
-- **Đánh đổi:** Mô hình hybrid còn duy trì chi phí phát triển/kiểm thử sync và vận hành hai lớp local/cloud, nhưng tránh buộc mọi thao tác đọc UI phụ thuộc mạng.
-
-### 5.4 Hiệu suất và độ sẵn sàng
-
-- **Tốt hơn trong truy cập từ xa:** người dùng có thể lấy metadata/file từ nơi khác mà không cần sao chép DB thủ công; object storage mở rộng tốt hơn việc gửi file qua tiến trình ứng dụng/API.
-- **Tốt hơn trong tải file quy mô lớn:** URL ký cho phép truyền trực tiếp giữa client và S3, tránh chuyển nội dung qua Lambda. CloudFront có thể giảm độ trễ tải lặp lại ở khu vực phù hợp.
-- **Độ trễ không luôn thấp hơn:** truy vấn Cloud phải đi qua mạng, xác thực và Backend nên có thể chậm hơn SQLite local; vùng triển khai xa, mạng yếu hoặc cấu hình DB nhỏ gây tăng latency. Cần cache, phân trang và đo p95 latency.
-- **Offline có giới hạn:** metadata đã cache tiếp tục xem được và thay đổi có thể chờ đồng bộ; file chưa tải về và thao tác cần xác thực không thể hoàn tất offline.
-- **Sẵn sàng tốt hơn nhưng không tuyệt đối:** dịch vụ managed giúp giảm việc tự quản trị máy chủ và hỗ trợ backup/HA theo cấu hình, nhưng lỗi mạng, cấu hình, giới hạn dịch vụ hoặc lỗi ứng dụng vẫn có thể gây gián đoạn.
-
-## 6. Lộ trình chuyển đổi đề xuất
-
-1. **Khảo sát và chuẩn hóa dữ liệu:** xác định nguồn của từng đường dẫn `fileUrl`, quyền sở hữu file, dữ liệu mẫu, dữ liệu thật và yêu cầu quyền riêng tư. Không coi URL hiện có là file có thể tự động import.
-2. **Thiết kế mô hình Cloud và bảo mật:** thêm chủ sở hữu/quyền, object key, version đồng bộ; định nghĩa API, giới hạn file, retention, backup và chính sách xóa.
-3. **Xây Backend tối thiểu:** Cognito, API CRUD/search, PostgreSQL và luồng cấp URL ký; kiểm thử quyền truy cập giữa các tài khoản.
-4. **Thêm object storage:** tạo S3 private bucket, Block Public Access, SSE-KMS, versioning/lifecycle; thử upload/download trực tiếp với URL ký.
-5. **Tích hợp Flutter qua repository/API client:** giữ giao diện hiện tại, bổ sung chọn file, progress, cache, outbox và xử lý xung đột. Giữ local-only mode có kiểm soát trong giai đoạn chuyển tiếp.
-6. **Di trú có xác minh:** xuất SQLite theo từng thiết bị/người dùng; upload file gốc khi có quyền, nhập metadata, đối soát số bản ghi và checksum; xử lý trùng lặp/lỗi và có thể quay lại bản sao local. Không tự động chuyển chuỗi URL ngoài thành object S3.
-7. **Chạy thử và phát hành từng bước:** dùng nhóm thử nghiệm/dữ liệu giả, kiểm tra mất mạng, token hết hạn, file lớn, truy cập trái phép, đồng bộ xung đột, backup/restore, chi phí và độ trễ; sau đó mới mở rộng.
-
-## 7. Kết luận theo 5 checklist
-
-| Checklist | Nội dung đáp ứng |
-|---|---|
-| 1. Liệt kê và phân tích Frontend, Backend, Database, File Storage | Mục 1 mô tả từng thành phần cùng giới hạn hiện trạng; xác nhận chưa có Backend server và chưa có File Storage tích hợp. |
-| 2. Điểm nghẽn/hạn chế hạ tầng truyền thống | Mục 2 phân tích dữ liệu cục bộ phân tán, thiếu đồng bộ/quyền tập trung, không quản lý file, giới hạn Web fallback, sao lưu và mở rộng. |
-| 3. Chọn Cloud và dịch vụ cụ thể | Mục 3 chọn Hybrid Cloud, nêu Cognito, API Gateway, Lambda, RDS PostgreSQL, S3, cùng CloudFront/KMS/CloudWatch tùy nhu cầu. |
-| 4. Sơ đồ và luồng dữ liệu | Mục 4 có sơ đồ Mermaid và luồng upload, download, CRUD/tìm kiếm, đồng bộ offline. |
-| 5. Tác động bảo mật, chi phí, hiệu suất | Mục 5 so sánh trước/sau và đánh giá lợi ích, rủi ro, chi phí phụ thuộc workload, hiệu suất cùng giới hạn offline. |
-
+Prototype đã chứng minh đăng nhập Google và lưu tệp trên Firebase Storage trong kiến trúc Flutter + SQLite local. Không nên tuyên bố metadata đa thiết bị, Firestore, Backend riêng, đồng bộ offline hay kiểm thử Firebase production đã hoàn tất. Phần báo cáo và slide tách rõ những gì đã có khỏi phần mở rộng đề xuất; nhóm cần hoàn tất cấu hình Console và chạy kịch bản demo trước khi khẳng định luồng Firebase thật hoạt động.

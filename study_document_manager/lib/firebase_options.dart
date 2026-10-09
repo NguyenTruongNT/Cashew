@@ -47,29 +47,31 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBt8b_A1qE0puwlVP54e1IqHoFD4xYISVM',
-    appId: '1:1047483797850:web:69e57b06c94780b5d7a363',
-    messagingSenderId: '1047483797850',
-    projectId: 'document-manager-e4289',
-    authDomain: 'document-manager-e4289.firebaseapp.com',
-    storageBucket: 'document-manager-e4289.firebasestorage.app',
-    measurementId: 'G-VHZDN0RDX5',
+
+    apiKey: 'AIzaSyCtmgq7yEBDP-fnz9pZ__h2pptL4knUtbk',
+    appId: '1:747752646321:web:916c9127241c3152922490',
+    messagingSenderId: '747752646321',
+    projectId: 'cashew-study-docs-3afed',
+    authDomain: 'cashew-study-docs-3afed.firebaseapp.com',
+    storageBucket: 'cashew-study-docs-3afed.firebasestorage.app',
+    measurementId: 'G-CPL8LL8X5N',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA5CnvMIZYeqe4SAYZVMQBir3omLDofZTc',
-    appId: '1:1047483797850:android:c85776ddafcff074d7a363',
-    messagingSenderId: '1047483797850',
-    projectId: 'document-manager-e4289',
-    storageBucket: 'document-manager-e4289.firebasestorage.app',
+    apiKey: 'AIzaSyBSfbY1A54zL9tPg1sTfnjEGMBlvfrGJ3w',
+    appId: '1:747752646321:android:1f3a908c3decbe8d922490',
+    messagingSenderId: '747752646321',
+    projectId: 'cashew-study-docs-3afed',
+    storageBucket: 'cashew-study-docs-3afed.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBMt5INjGRQUlzAkmSTbluHz5asqXg23ro',
-    appId: '1:1047483797850:ios:fb04674304b03a1bd7a363',
-    messagingSenderId: '1047483797850',
-    projectId: 'document-manager-e4289',
-    storageBucket: 'document-manager-e4289.firebasestorage.app',
+    apiKey: 'AIzaSyA1ZbX5wPsEZplFAkoEh5feGTa66C79UqQ',
+    appId: '1:747752646321:ios:5fc852d7d3703354922490',
+    messagingSenderId: '747752646321',
+    projectId: 'cashew-study-docs-3afed',
+    storageBucket: 'cashew-study-docs-3afed.firebasestorage.app',
+    iosClientId: '747752646321-kg5qampf0vd63v3hha6sjk37st0em4il.apps.googleusercontent.com',
     iosBundleId: 'vn.edu.cashew.studyDocumentManager',
   );
 }

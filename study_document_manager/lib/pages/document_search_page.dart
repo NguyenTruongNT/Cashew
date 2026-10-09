@@ -1,4 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
@@ -84,10 +86,29 @@ class _DocumentSearchPageState extends State<DocumentSearchPage> {
       builder: (ctx) => ConfirmDeleteDialog(
         documentTitle: doc.title,
         onConfirm: () async {
-          await DocumentService.deleteDocument(doc.id);
-          if (mounted) {
-            openSnackbar(context, message: 'Đã xóa tài liệu!');
-            await _performSearch();
+          try {
+            await DocumentService.deleteDocument(doc.id);
+            if (mounted) {
+              openSnackbar(context, message: 'Đã xóa tài liệu!');
+              await _performSearch();
+            }
+          } on FirebaseException catch (error) {
+            if (mounted) {
+              openSnackbar(
+                context,
+                message:
+                    'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+                isError: true,
+              );
+            }
+          } catch (error) {
+            if (mounted) {
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tài liệu: $error',
+                isError: true,
+              );
+            }
           }
         },
       ),
@@ -112,7 +133,8 @@ class _DocumentSearchPageState extends State<DocumentSearchPage> {
         children: [
           // Thanh tìm kiếm Debounce
           DocumentSearchBar(
-            controller: TextEditingController(text: _query)..selection = TextSelection.collapsed(offset: _query.length),
+            controller: TextEditingController(text: _query)
+              ..selection = TextSelection.collapsed(offset: _query.length),
             hintText: 'Nhập tên tài liệu, ghi chú hoặc thẻ #tag...',
             onChanged: (val) {
               _query = val;
@@ -146,22 +168,33 @@ class _DocumentSearchPageState extends State<DocumentSearchPage> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String?>(
                         isExpanded: true,
                         value: _subjectFilter,
-                        hint: const Text('Tất cả môn học', style: TextStyle(fontSize: 12)),
+                        hint: const Text(
+                          'Tất cả môn học',
+                          style: TextStyle(fontSize: 12),
+                        ),
                         items: [
                           const DropdownMenuItem<String?>(
                             value: null,
-                            child: Text('Tất cả môn học', style: TextStyle(fontSize: 12)),
+                            child: Text(
+                              'Tất cả môn học',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
                           ..._subjectMap.values.map(
                             (s) => DropdownMenuItem<String?>(
                               value: s.id,
-                              child: Text('[${s.code}] ${s.name}', style: const TextStyle(fontSize: 12)),
+                              child: Text(
+                                '[${s.code}] ${s.name}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ),
                           ),
                         ],
@@ -177,17 +210,24 @@ class _DocumentSearchPageState extends State<DocumentSearchPage> {
 
                 // Lọc yêu thích
                 FilterChip(
-                  label: const Text('Quan trọng', style: TextStyle(fontSize: 12)),
+                  label: const Text(
+                    'Quan trọng',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   selected: _onlyFavorites,
                   avatar: Icon(
-                    _onlyFavorites ? Icons.star_rounded : Icons.star_border_rounded,
+                    _onlyFavorites
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     size: 16,
                     color: _onlyFavorites
                         ? AppColors.warning
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   selectedColor: AppColors.warning.withValues(alpha: 0.14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   onSelected: (val) {
                     setState(() => _onlyFavorites = val);
                     _performSearch();
@@ -219,50 +259,50 @@ class _DocumentSearchPageState extends State<DocumentSearchPage> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Không tìm thấy tài liệu nào',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Thử thay đổi từ khóa hoặc bộ lọc tìm kiếm',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.outline,
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          final doc = _results[index];
-                          final sub = _subjectMap[doc.subjectId];
-                          return DocumentCard(
-                            document: doc,
-                            subject: sub,
-                            onTap: () async {
-                              final res = await pushRoute(
-                                context,
-                                DocumentDetailPage(documentId: doc.id),
-                              );
-                              if (res == true) _performSearch();
-                            },
-                            onFavoriteToggle: () => _onFavoriteToggle(doc),
-                            onStatusToggle: () => _onStatusToggle(doc),
-                            onEdit: () => _onEdit(doc),
-                            onDelete: () => _onDelete(doc),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Không tìm thấy tài liệu nào',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Thử thay đổi từ khóa hoặc bộ lọc tìm kiếm',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _results.length,
+                    itemBuilder: (context, index) {
+                      final doc = _results[index];
+                      final sub = _subjectMap[doc.subjectId];
+                      return DocumentCard(
+                        document: doc,
+                        subject: sub,
+                        onTap: () async {
+                          final res = await pushRoute(
+                            context,
+                            DocumentDetailPage(documentId: doc.id),
                           );
+                          if (res == true) _performSearch();
                         },
-                      ),
+                        onFavoriteToggle: () => _onFavoriteToggle(doc),
+                        onStatusToggle: () => _onStatusToggle(doc),
+                        onEdit: () => _onEdit(doc),
+                        onDelete: () => _onDelete(doc),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

@@ -1,26 +1,31 @@
 {
-  "storage": {
-    "rules": "storage.rules"
-  },
+
   "flutter": {
     "platforms": {
       "android": {
         "default": {
-          "projectId": "document-manager-e4289",
-          "appId": "1:1047483797850:android:c85776ddafcff074d7a363",
+
+          "projectId": "cashew-study-docs-3afed",
+          "appId": "1:747752646321:android:1f3a908c3decbe8d922490",
+
           "fileOutput": "android/app/google-services.json"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "document-manager-e4289",
+
+          "projectId": "cashew-study-docs-3afed",
           "configurations": {
-            "android": "1:1047483797850:android:c85776ddafcff074d7a363",
-            "ios": "1:1047483797850:ios:fb04674304b03a1bd7a363",
-            "web": "1:1047483797850:web:69e57b06c94780b5d7a363"
+            "android": "1:747752646321:android:1f3a908c3decbe8d922490",
+            "ios": "1:747752646321:ios:5fc852d7d3703354922490",
+            "web": "1:747752646321:web:916c9127241c3152922490"
           }
         }
       }
     }
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
+

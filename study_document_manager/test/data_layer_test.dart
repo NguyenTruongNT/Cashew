@@ -44,6 +44,7 @@ void main() {
         type: DocumentType.lecture,
         notes: 'Ghi chú bài học kiểm thử',
         fileUrl: 'https://example.com/test.pdf',
+        storagePath: 'users/test-user/documents/test-doc/file-id/test.pdf',
         tags: ['UnitTest', 'Cashew'],
         status: DocumentStatus.pending,
         priority: PriorityLevel.high,
@@ -63,6 +64,10 @@ void main() {
       );
       expect(retrieved.tags, contains('UnitTest'));
       expect(retrieved.isFavorite, isTrue);
+      expect(
+        retrieved.storagePath,
+        equals('users/test-user/documents/test-doc/file-id/test.pdf'),
+      );
     });
 
     test('3. Chỉnh sửa thông tin tài liệu (Update)', () async {
@@ -138,78 +143,5 @@ void main() {
       },
     );
 
-    test(
-      '7. Dữ liệu được phân vùng theo tài khoản và giữ dữ liệu cũ ở local',
-      () async {
-        final legacyLocalDocument = await db.getDocumentById('doc_1');
-        expect(legacyLocalDocument, isNotNull);
-        final sharedLecture = await db.getDocumentById(
-          'shared_doc_swe_lecture_01',
-        );
-        expect(sharedLecture?.isShared, isTrue);
-        expect(
-          (await db.getAllDocuments()).where((document) => document.isShared),
-          hasLength(2),
-        );
-
-        await db.setActiveOwner('user-a');
-        var documents = await db.getAllDocuments();
-        expect(documents.where((document) => document.isShared), hasLength(2));
-        expect(documents.where((document) => !document.isShared), hasLength(2));
-        expect(await db.getAllSubjects(), hasLength(2));
-        final userAAssignments = documents
-            .where((document) => !document.isShared)
-            .toList();
-        expect(
-          userAAssignments.every(
-            (document) => document.type == DocumentType.assignment,
-          ),
-          isTrue,
-        );
-
-        final userSubject = SubjectModel(
-          id: 'user_a_subject',
-          name: 'Môn riêng của A',
-          code: 'A101',
-          colorValue: 0xFF1E88E5,
-          iconName: 'book',
-          createdDate: DateTime.now(),
-        );
-        await db.insertSubject(userSubject);
-
-        final userDocument = DocumentModel(
-          id: 'user_a_document',
-          title: 'Tài liệu riêng của A',
-          subjectId: userSubject.id,
-          type: DocumentType.reference,
-          createdDate: DateTime.now(),
-          updatedDate: DateTime.now(),
-        );
-        await db.insertDocument(userDocument);
-
-        await db.setActiveOwner('user-b');
-        documents = await db.getAllDocuments();
-        expect(documents.where((document) => document.isShared), hasLength(2));
-        expect(documents.where((document) => !document.isShared), hasLength(2));
-        expect(await db.getDocumentById(userDocument.id), isNull);
-        expect(await db.updateDocument(userDocument), 0);
-        expect(await db.deleteDocument(userDocument.id), 0);
-        expect(await db.updateDocument(sharedLecture!), 0);
-        expect(await db.deleteDocument(sharedLecture.id), 0);
-        await expectLater(
-          db.insertDocument(userDocument),
-          throwsA(isA<StateError>()),
-        );
-
-        await db.setActiveOwner('user-a');
-        expect(await db.getDocumentById(userDocument.id), isNotNull);
-        expect(await db.getAllSubjects(), hasLength(3));
-
-        await db.setActiveOwner(null);
-        expect(await db.getDocumentById('doc_1'), isNotNull);
-        expect(await db.getDocumentById(userDocument.id), isNull);
-        expect(await db.getDocumentById(sharedLecture.id), isNotNull);
-      },
-    );
   });
 }

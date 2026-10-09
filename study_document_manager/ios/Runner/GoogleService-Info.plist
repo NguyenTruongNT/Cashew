@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>747752646321-kg5qampf0vd63v3hha6sjk37st0em4il.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.747752646321-kg5qampf0vd63v3hha6sjk37st0em4il</string>
+	<key>API_KEY</key>
+	<string>AIzaSyA1ZbX5wPsEZplFAkoEh5feGTa66C79UqQ</string>
+	<key>GCM_SENDER_ID</key>
+	<string>747752646321</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>vn.edu.cashew.studyDocumentManager</string>
+	<key>PROJECT_ID</key>
+	<string>cashew-study-docs-3afed</string>
+	<key>STORAGE_BUCKET</key>
+	<string>cashew-study-docs-3afed.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:747752646321:ios:5fc852d7d3703354922490</string>
+</dict>
+</plist>

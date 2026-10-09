@@ -1,36 +1,53 @@
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../firebase_options.dart';
 
 class GoogleAuthService {
   GoogleAuthService._();
 
-  static final FirebaseAuth _auth = FirebaseAuth.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  static final GoogleAuthService instance = GoogleAuthService._();
+  static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  static Future<void>? _googleSignInInitialization;
 
-  static Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Stream<User?> get authStateChanges =>
+      FirebaseAuth.instance.authStateChanges();
 
-  static User? get currentUser => _auth.currentUser;
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+  bool get isConfigured => Firebase.apps.isNotEmpty;
 
-  static Future<UserCredential?> signIn() async {
+  Future<UserCredential?> signInWithGoogle() async {
     if (kIsWeb) {
-      return _auth.signInWithPopup(GoogleAuthProvider());
+      return FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
     }
 
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null;
+    await (_googleSignInInitialization ??= _googleSignIn.initialize(
+      clientId: defaultTargetPlatform == TargetPlatform.iOS
+          ? DefaultFirebaseOptions.ios.iosClientId
+          : null,
+    ));
+    try {
+      final googleUser = await _googleSignIn.authenticate();
+      final idToken = googleUser.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw StateError('Google Sign-In did not return an ID token.');
+      }
 
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    return _auth.signInWithCredential(credential);
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      return await FirebaseAuth.instance.signInWithCredential(credential);
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
+    }
   }
 
-  static Future<void> signOut() async {
-    await _auth.signOut();
-    if (!kIsWeb) {
+  Future<void> signOut() async {
+    await FirebaseAuth.instance.signOut();
+    if (!kIsWeb && _googleSignInInitialization != null) {
+
       await _googleSignIn.signOut();
     }
   }
