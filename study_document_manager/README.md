@@ -106,7 +106,7 @@ study_document_manager/
    ```bash
    flutter pub get
    ```
-3. Chạy ứng dụng trên máy ảo Android/iOS hoặc Windows desktop:
+3. Chạy ứng dụng trên máy ảo Android hoặc Windows desktop:
    ```bash
    flutter run
    ```
@@ -133,12 +133,12 @@ Kết quả kiểm thử đạt **42/42 test cases pass (100%)**, trong đó:
 
 ## 🔥 7. Firebase Authentication và Cloud Storage
 
-Ứng dụng kết nối Firebase project `cashew-study-docs-3afed` trên Android, iOS và Web:
+Ứng dụng tham chiếu Firebase project `cashew-study-docs-3afed`. Phần Auth/Storage trong mã nguồn hiện được bật cho Android và Web; iOS chưa được cấu hình và không được xem là nền tảng đã kiểm chứng:
 
 - **Firebase Authentication:** đăng nhập/đăng xuất bằng Google, xem trạng thái đăng nhập và hồ sơ cơ bản tại nút tài khoản trên Dashboard.
 - **Cloud Storage:** chọn PDF, Word, PowerPoint, Excel hoặc TXT tối đa 20 MB. File được tải lên `users/{uid}/documents/{documentId}/{fileId}/{fileName}`; tiến trình upload được hiển thị.
-- **SQLite:** tiếp tục lưu metadata cục bộ. Cột `storage_path` chứa đường dẫn Storage; schema được nâng từ phiên bản 1 lên 2 để giữ nguyên dữ liệu cũ. Metadata hiện chưa đồng bộ giữa các thiết bị.
-- **Rules:** `storage.rules` chỉ cho phép chủ sở hữu đã đăng nhập đọc/xóa file và giới hạn loại nội dung/kích thước. Ứng dụng không lưu Download URL có token vào SQLite; không chia sẻ URL tải xuống được tạo khi mở file ra ngoài vì URL dạng token có thể được dùng như liên kết truy cập.
+- **SQLite:** tiếp tục lưu metadata cục bộ. Cột `storage_path` giữ đường dẫn Storage; migration hiện tại thêm các cột Storage, sync và owner-scope theo từng phiên bản. Metadata hiện chưa đồng bộ giữa các thiết bị.
+- **Rules:** `storage.rules` chỉ cho phép chủ sở hữu đã đăng nhập đọc/xóa và tạo/cập nhật file hợp lệ, giới hạn MIME và kích thước. Ứng dụng không lưu Download URL có token vào SQLite; không chia sẻ URL tải xuống được tạo khi mở file ra ngoài vì URL dạng token có thể được dùng như liên kết truy cập.
 
 ### Cấu hình Firebase Console cần hoàn tất
 
@@ -146,7 +146,7 @@ Kết quả kiểm thử đạt **42/42 test cases pass (100%)**, trong đó:
 2. Trong **Authentication → Sign-in method**, bật nhà cung cấp **Google** và chọn email hỗ trợ.
 3. Trong **Storage**, tạo default bucket. Kiểm tra gói/billing mà Console yêu cầu cho bucket, chọn region phù hợp (khó đổi sau khi tạo) và cấu hình cảnh báo ngân sách trước khi upload.
 4. Với Android, thêm SHA-1 của debug/release signing key vào app Android trong Firebase Console. Có thể xem fingerprint từ thư mục `android` bằng `.\gradlew signingReport`; sau khi thêm SHA, tải/cập nhật cấu hình Android nếu Firebase yêu cầu.
-5. Web cần cho phép domain đang dùng trong Authentication settings → Authorized domains. iOS Google Sign-In cần URL scheme đã cấu hình trong `ios/Runner/Info.plist`.
+5. Web cần cho phép domain đang dùng trong Authentication settings → Authorized domains. iOS chưa được hỗ trợ/cấu hình trong bản hiện tại.
 
 ### Cấu hình lại máy thành viên hoặc project Firebase
 
@@ -156,10 +156,10 @@ Chạy từ thư mục `study_document_manager`:
 firebase login
 dart pub global activate flutterfire_cli
 flutter pub get
-dart pub global run flutterfire_cli:flutterfire configure --project=cashew-study-docs-3afed --platforms=android,ios,web
+dart pub global run flutterfire_cli:flutterfire configure --project=cashew-study-docs-3afed --platforms=android,web
 ```
 
-Không dán URL đăng nhập Google vào PowerShell. Chỉ mở URL trong trình duyệt khi Firebase CLI yêu cầu đăng nhập. Các tệp `lib/firebase_options.dart`, `android/app/google-services.json` và `ios/Runner/GoogleService-Info.plist` gắn ứng dụng với đúng Firebase project.
+Không dán URL đăng nhập Google vào PowerShell. Chỉ mở URL trong trình duyệt khi Firebase CLI yêu cầu đăng nhập. Các tệp `lib/firebase_options.dart` và `android/app/google-services.json` gắn ứng dụng với đúng Firebase project. iOS cần được cấu hình riêng trước khi bật hỗ trợ.
 
 Sau khi bật/tạo Storage bucket trong Console, triển khai rules từ thư mục ứng dụng:
 
@@ -169,7 +169,7 @@ firebase deploy --only storage --project=cashew-study-docs-3afed
 
 ### Kiểm tra luồng demo
 
-1. Chạy app trên Android, iOS hoặc Chrome và đăng nhập bằng Google.
+1. Chạy app trên Android hoặc Chrome và đăng nhập bằng Google.
 2. Tạo/chỉnh sửa tài liệu, chọn một file hợp lệ và lưu; xác nhận tiến độ upload hoàn tất.
 3. Kiểm tra file trong Firebase Console dưới thư mục UID tương ứng; mở file từ trang chi tiết.
 4. Thử người dùng khác truy cập file và thử file quá 20 MB hoặc sai loại; Storage Rules phải từ chối.
@@ -178,24 +178,24 @@ firebase deploy --only storage --project=cashew-study-docs-3afed
 ### Báo cáo và slide
 
 - Báo cáo phân tích đủ checklist 1–7: [BAO_CAO_TICH_HOP_CLOUD.md](BAO_CAO_TICH_HOP_CLOUD.md).
-- Slide trình chiếu: [SLIDE_FIREBASE_CLOUD.pptx](SLIDE_FIREBASE_CLOUD.pptx); nội dung có thể chỉnh ở [SLIDE_FIREBASE_CLOUD.md](SLIDE_FIREBASE_CLOUD.md). Thay `[Điền tên nhóm]` và `[Điền tên thành viên]` trước khi nộp.
-- Báo cáo phân biệt phần đã có (Google Authentication, Cloud Storage, SQLite local) với Firestore/đồng bộ metadata là phần mở rộng. Nhánh `son-offline-sync` đã bổ sung **Local Cache + đồng bộ metadata Offline-First** (xem Mục 8). Build/test thành công không thay thế cho kiểm tra đăng nhập, bucket và Rules trên Firebase Console thật.
+- Slide trình chiếu: [SLIDE_FIREBASE_CLOUD.pptx](SLIDE_FIREBASE_CLOUD.pptx); nội dung có thể chỉnh ở [SLIDE_FIREBASE_CLOUD.md](SLIDE_FIREBASE_CLOUD.md). Bản hiện tại ghi Nhóm 12 và đủ 4 thành viên.
+- Báo cáo phân biệt phần code Auth/Storage, SQLite local, mock sync và các phần mở rộng. Build/test thành công không thay thế cho kiểm tra đăng nhập, bucket và Rules trên Firebase Console thật.
 
 ---
 
-## 🔄 8. Local Cache & Đồng bộ Cloud (Offline-First)
+## 🔄 8. Local Cache & Đồng bộ mô phỏng (Offline-First)
 
-Nhánh `son-offline-sync` bổ sung cơ chế **Offline-First**: thao tác cục bộ được ghi ngay vào SQLite và lưu tệp vào cache; khi có mạng, dữ liệu tự động đẩy lên/kéo về Cloud.
+Ứng dụng có cơ chế **Offline-First**: thao tác cục bộ được ghi vào SQLite và tệp có thể được lưu cache. Bộ `SyncEngine` hiện kết nối `MockRemoteSyncService` trong bộ nhớ để demo/kiểm thử; nó **không đẩy metadata lên Firebase, AWS hay Cloud thật**, và dữ liệu mock không bền qua lần chạy.
 
-- **Hàng đợi đồng bộ:** bảng `sync_outbox` lưu các thao tác `upsert`/`delete` chờ đẩy lên Cloud.
-- **Đồng bộ hai chiều:** `SyncEngine.push` (outbox → Cloud) và `SyncEngine.pull` (Cloud → SQLite theo mốc `lastSyncAt`).
+- **Hàng đợi mô phỏng:** bảng `sync_outbox` lưu thao tác `upsert`/`delete` để chạy qua remote adapter.
+- **Trao đổi hai chiều mô phỏng:** `SyncEngine.push`/`pull` dùng mock in-memory; chưa phải đồng bộ metadata đa thiết bị.
 - **Toàn vẹn dữ liệu:** checksum **MD5/SHA-256** (`crypto`) kiểm tra tệp trước khi đẩy và sau khi kéo.
 - **Đồng bộ xóa:** bảng `delete_logs` (tombstone) đảm bảo xóa hai chiều, không "hồi sinh" dữ liệu.
 - **Xung đột:** Last-Write-Wins có kiểm soát dựa trên `version` + `updatedDate`.
 - **Kết nối:** `HeartbeatNetworkMonitor` tự động kích hoạt đồng bộ khi mạng phục hồi.
-- **Giao diện:** thẻ `SyncStatusBanner` trên Dashboard hiển thị Online/Offline, số mục chờ và nút "Đồng bộ ngay".
-- **Nền tảng Cloud:** trừu tượng qua `RemoteSyncService`; mặc định dùng `MockRemoteSyncService` (không cần credentials), dễ thay bằng Firebase/AWS.
+- **Giao diện:** thẻ `SyncStatusBanner` trên Dashboard hiển thị rõ trạng thái đồng bộ mô phỏng, không đánh dấu mock là Cloud thật.
+- **Backend Cloud:** chưa có triển khai `RemoteSyncService` cho Firebase/Firestore hoặc AWS; nếu cần đồng bộ thật, phải phát triển adapter và Rules/schema tương ứng.
 
-**Schema SQLite nâng từ v2 lên v3** (tự động migration): thêm 8 cột đồng bộ vào `documents` và 3 bảng `delete_logs`, `sync_outbox`, `sync_state`.
+**Schema SQLite hiện tại là v4** (tự động migration): v2 bổ sung `storage_path`, v3 thêm các trường đồng bộ và 3 bảng `delete_logs`, `sync_outbox`, `sync_state`, v4 bổ sung phạm vi sở hữu cho môn học/tài liệu.
 
 📄 Chi tiết kiến trúc, mô hình dữ liệu, kết quả kiểm thử và hiệu năng mạng yếu: [SON_BAOCAO_OFFLINE_SYNC.md](SON_BAOCAO_OFFLINE_SYNC.md).

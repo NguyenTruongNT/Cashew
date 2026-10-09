@@ -1,12 +1,12 @@
 # Phân tích và phương án tích hợp Cloud cho hệ thống Quản lý Tài liệu
 
 > **Dự án:** Study Document Manager (Flutter)
-> **Firebase project đã cấu hình trong mã nguồn:** `cashew-study-docs-3afed`
-> **Phạm vi:** Phân tích kiến trúc hiện trạng, đánh giá hạn chế, trình bày mô hình Hybrid Cloud và phân biệt rõ phần Firebase đã tích hợp với phần đồng bộ metadata còn là đề xuất.
+> **Firebase project được tham chiếu trong cấu hình ứng dụng:** `cashew-study-docs-3afed`
+> **Phạm vi:** Phân tích kiến trúc hiện trạng, đánh giá hạn chế, trình bày mô hình Hybrid Cloud và phân biệt phần code Firebase, dịch vụ mock cùng các bước Console chưa được xác nhận.
 
 ## Tóm tắt
 
-Ứng dụng Flutter hiện quản lý metadata tài liệu/môn học bằng SQLite cục bộ. Bản tích hợp thực tế đã bổ sung Google Authentication và Firebase Cloud Storage cho file trên Android, iOS và Web. Storage Rules giới hạn đường dẫn theo UID, loại MIME khai báo và dung lượng tối đa 20 MiB. Tuy nhiên, metadata vẫn ở SQLite của từng thiết bị: ứng dụng **chưa đồng bộ danh sách tài liệu giữa các thiết bị**, chưa có Firestore và chưa có Backend/API riêng.
+Ứng dụng Flutter hiện quản lý metadata tài liệu/môn học bằng SQLite cục bộ. Mã nguồn đã nối Firebase Authentication và Firebase Cloud Storage cho Android và Web; iOS chưa được cấu hình. `storage.rules` giới hạn đường dẫn theo UID, MIME được khai báo và dung lượng tối đa 20 MiB. Trạng thái Google provider, bucket và Rules trên Firebase Console chưa được xác nhận trong môi trường này. Metadata vẫn ở SQLite của từng thiết bị: ứng dụng **chưa đồng bộ danh sách tài liệu giữa các thiết bị**, chưa có Firestore và chưa có Backend/API riêng. SyncEngine hiện dùng mock in-memory, không phải backend Cloud.
 
 Phương án phù hợp với trạng thái và checklist là **Hybrid Cloud**: giữ Flutter + SQLite làm giao diện và dữ liệu local; dùng Firebase Authentication để xác thực và Cloud Storage để lưu file; nếu cần đồng bộ metadata đa thiết bị, bổ sung Firestore cùng quy tắc bảo mật và quy trình đồng bộ ở giai đoạn tiếp theo. Firebase là dịch vụ Public Cloud; SQLite vẫn là thành phần chạy trên thiết bị. Đây là phương án Firebase nhất quán với phần tích hợp thực hành, không nhầm lẫn với phương án AWS độc lập.
 
@@ -14,13 +14,13 @@ Phương án phù hợp với trạng thái và checklist là **Hybrid Cloud**: 
 
 | Thành phần | Hiện trạng trong ứng dụng | Nhận xét |
 |---|---|---|
-| **Frontend** | Flutter/Dart. `lib/pages/` có Dashboard, danh sách, tìm kiếm, chi tiết, form thêm/sửa và trang tài khoản. | Dùng chung cho Android, iOS và Web; hiển thị trạng thái đăng nhập và tiến độ upload. |
+| **Frontend** | Flutter/Dart. `lib/pages/` có Dashboard, danh sách, tìm kiếm, chi tiết, form thêm/sửa và trang tài khoản. | UI Flutter đa nền tảng; Firebase Auth/Storage hiện chỉ được bật trong code cho Android và Web. |
 | **Backend / nghiệp vụ** | Chưa có server/API riêng. `DocumentService` thực thi kiểm tra và gọi SQLite trong app. Firebase SDK được gọi từ lớp service phía client. | Firebase Authentication và Storage cung cấp dịch vụ managed, nhưng không biến app thành Backend server. Không có Cloud Function xử lý nghiệp vụ riêng. |
-| **Database / metadata** | SQLite lưu `subjects`, `documents` cùng thuộc tính tài liệu. `storage_path` được thêm qua migration schema version 2. | Database vẫn cục bộ; cùng tài khoản trên thiết bị khác không tự thấy metadata. Firebase không lưu metadata trong phiên bản hiện tại. |
+| **Database / metadata** | SQLite lưu `subjects`, `documents` cùng thuộc tính tài liệu. Các migration bổ sung Storage path, sync metadata và owner scoping đến schema version 4. | Database vẫn cục bộ; cùng tài khoản trên thiết bị khác không tự thấy metadata. Firebase không lưu metadata trong phiên bản hiện tại. |
 | **File Storage** | Firebase Cloud Storage lưu nội dung file theo `users/{uid}/documents/{documentId}/{fileId}/{fileName}`. SQLite chỉ giữ `storage_path`, không giữ byte file hay Download URL. | Upload trực tiếp từ app, tối đa 20 MiB, hỗ trợ PDF/Office/TXT; đọc/xóa cần đăng nhập đúng UID theo Rules. |
-| **Danh tính** | Firebase Authentication với Google Sign-In trên Android, iOS và Web. | SHA-1 Android, cấu hình iOS và Authorized Domain Web phải khớp Firebase Console. |
+| **Danh tính** | Code Firebase Authentication với Google Sign-In trên Android và Web. | SHA-1 Android và Authorized Domain Web phải khớp Firebase Console; iOS chưa được cấu hình. |
 
-Các điểm triển khai chính: `lib/main.dart` khởi tạo Firebase trên Android/iOS/Web; `lib/struct/google_auth_service.dart` xử lý đăng nhập; `lib/struct/firebase_storage_service.dart` xử lý upload/download URL/xóa; `lib/database/app_database.dart` quản lý SQLite và migration; `storage.rules` giới hạn truy cập Storage.
+Các điểm triển khai chính: `lib/main.dart` khởi tạo Firebase trên Android/Web; `lib/struct/google_auth_service.dart` xử lý đăng nhập; `lib/struct/firebase_storage_service.dart` xử lý upload/download URL/xóa; `lib/database/app_database.dart` quản lý SQLite và migration; `storage.rules` giới hạn truy cập Storage. `MockRemoteSyncService` chỉ mô phỏng đồng bộ metadata trong bộ nhớ.
 
 ## 2. Hạn chế của mô hình cục bộ/truyền thống
 
@@ -130,7 +130,7 @@ Kiến trúc đích không được hiểu là đã triển khai. Trước khi b
 
 1. Chủ project cấp quyền cần thiết cho thành viên trong Google/Firebase Cloud project; không chia sẻ mật khẩu tài khoản cá nhân.
 2. Bật Authentication → Google; tạo bucket sau khi xác nhận region, billing và cảnh báo ngân sách.
-3. Thêm SHA-1 cho Android; kiểm tra iOS URL scheme/client ID; cho phép domain đang dùng cho Web.
+3. Thêm SHA-1 cho Android và cho phép domain đang dùng cho Web; iOS chưa được cấu hình trong app.
 4. Chạy `firebase deploy --only storage --project=cashew-study-docs-3afed` từ `study_document_manager/` để áp dụng `storage.rules`.
 5. Chạy app trên Android hoặc Chrome: đăng nhập, upload file nhỏ, kiểm tra đường dẫn UID, mở file, xóa file; thử đăng xuất, file không hỗ trợ, file quá 20 MiB và UID khác.
 6. Kiểm tra Console để chắc chắn object đã bị xóa. Thử bằng UID khác phải không đọc/xóa được object.
@@ -148,8 +148,8 @@ Hướng dẫn thao tác Console chi tiết nằm trong `README.md`. Mã nguồn
 | 4 | Sơ đồ kiến trúc và luồng dữ liệu | Mục 4 có sơ đồ prototype, sơ đồ đích và các bước dữ liệu. |
 | 5 | Bảo mật, chi phí, hiệu suất | Mục 5 đánh giá lợi ích, giới hạn, chi phí theo usage và phụ thuộc mạng. |
 | 6 | Firebase Google Sign-In và Storage | Code app có Auth/Storage; các thao tác Console, billing và deploy Rules vẫn cần nhóm thực hiện/ghi nhận. |
-| 7 | Slide Firebase và setup tài khoản nhóm | Có bản trình chiếu và source slide; thay placeholder tên nhóm/thành viên trước khi nộp. |
+| 7 | Slide Firebase và setup tài khoản nhóm | Có bản trình chiếu/source slide, ghi Nhóm 12 và đủ 4 thành viên. |
 
 ## Kết luận
 
-Prototype đã chứng minh đăng nhập Google và lưu tệp trên Firebase Storage trong kiến trúc Flutter + SQLite local. Không nên tuyên bố metadata đa thiết bị, Firestore, Backend riêng, đồng bộ offline hay kiểm thử Firebase production đã hoàn tất. Phần báo cáo và slide tách rõ những gì đã có khỏi phần mở rộng đề xuất; nhóm cần hoàn tất cấu hình Console và chạy kịch bản demo trước khi khẳng định luồng Firebase thật hoạt động.
+Mã nguồn có luồng Google Sign-In và Firebase Storage cho Android/Web; bộ test và build không chứng minh cấu hình Firebase thật đã hoạt động. Không nên tuyên bố metadata đa thiết bị, Firestore, Backend riêng, đồng bộ metadata Cloud hay kiểm thử Firebase production đã hoàn tất. Nhóm cần bật provider, khởi tạo bucket theo điều kiện Console, triển khai Rules và chạy kịch bản demo trước khi khẳng định luồng Firebase thật hoạt động.

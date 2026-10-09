@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../database/databaseGlobal.dart';
@@ -164,7 +164,9 @@ class DocumentService {
       result = result.where((doc) {
         final matchTitle = doc.title.toLowerCase().contains(query);
         final matchNotes = doc.notes.toLowerCase().contains(query);
-        final matchTags = doc.tags.any((tag) => tag.toLowerCase().contains(query));
+        final matchTags = doc.tags.any(
+          (tag) => tag.toLowerCase().contains(query),
+        );
         return matchTitle || matchNotes || matchTags;
       }).toList();
     }
@@ -190,7 +192,9 @@ class DocumentService {
         result.sort((a, b) => b.updatedDate.compareTo(a.updatedDate));
         break;
       case DocumentSortOption.titleAsc:
-        result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        result.sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
         break;
       case DocumentSortOption.deadlineEarliest:
         result.sort((a, b) {
@@ -236,7 +240,10 @@ class DocumentService {
         fileName ?? '${document.id}.bin',
         fileBytes,
       );
-      result = result.copyWith(localPath: path, updatedDate: result.updatedDate);
+      result = result.copyWith(
+        localPath: path,
+        updatedDate: result.updatedDate,
+      );
     }
     return result;
   }
@@ -263,7 +270,9 @@ class DocumentService {
       fileName: fileName,
     );
     doc = doc.copyWith(
-      syncStatus: isSyncEnabled ? SyncStatus.pendingUpload : SyncStatus.localOnly,
+      syncStatus: isSyncEnabled
+          ? SyncStatus.pendingUpload
+          : SyncStatus.localOnly,
       updatedDate: doc.updatedDate,
     );
     await database.insertDocument(doc);
@@ -307,7 +316,22 @@ class DocumentService {
   /// sau đó xóa cục bộ. Cloud sẽ được đồng bộ khi có mạng.
   static Future<void> deleteDocument(String id) async {
     final document = await database.getDocumentById(id);
-    final storagePath = document?.storagePath;
+    if (document == null) return;
+    if (document.isShared) {
+      throw StateError('Không thể xóa tài liệu dùng chung.');
+    }
+
+    final storagePath = document.storagePath;
+    if (storagePath != null) {
+      if (!GoogleAuthService.instance.isConfigured) {
+        throw StateError('Firebase chưa được cấu hình trên nền tảng hiện tại.');
+      }
+      if (GoogleAuthService.instance.currentUser == null) {
+        throw StateError('Đăng nhập Google trước khi xóa tệp trên Cloud.');
+      }
+      await FirebaseStorageService.instance.delete(storagePath);
+    }
+
     final deleteLogId = const Uuid().v4();
 
     await database.insertDeleteLog(
@@ -316,27 +340,25 @@ class DocumentService {
         documentId: id,
         ownerId: syncEngine?.ownerId,
         storagePath: storagePath,
-        checksum: document?.checksum,
+        checksum: document.checksum,
         deletedAt: DateTime.now(),
         source: 'local',
         syncStatus: DeleteLogStatus.pending,
       ),
     );
 
-    if (document?.localPath case final localPath?) {
-      if (syncEngine != null) {
-        await syncEngine!.fileStore.delete(localPath);
-      }
+    final deletedCount = await database.deleteDocument(id);
+    if (deletedCount != 1) {
+      throw StateError('Không thể xóa tài liệu "$id" khỏi cơ sở dữ liệu.');
     }
 
-    await database.deleteDocument(id);
-
-    // Dọn tệp trên Firebase Storage (nếu đang đăng nhập) để tránh tệp mồ côi.
-    if (storagePath != null && _firebaseReady) {
-      try {
-        await FirebaseStorageService.instance.delete(storagePath);
-      } catch (_) {
-        // Bỏ qua: tệp sẽ được đối soát lại khi đồng bộ.
+    if (document.localPath case final localPath?) {
+      if (syncEngine != null) {
+        try {
+          await syncEngine!.fileStore.delete(localPath);
+        } catch (error) {
+          debugPrint('Không thể dọn tệp cache "$localPath": $error');
+        }
       }
     }
 
@@ -344,10 +366,7 @@ class DocumentService {
       await database.enqueueOutbox(
         entityId: id,
         operation: SyncOperation.delete,
-        payload: {
-          'delete_log_id': deleteLogId,
-          'storage_path': storagePath,
-        },
+        payload: {'delete_log_id': deleteLogId, 'storage_path': storagePath},
       );
       unawaited(syncEngine!.syncNow());
     }
@@ -366,15 +385,6 @@ class DocumentService {
       payload: payload,
     );
     unawaited(syncEngine!.syncNow());
-  }
-
-  static bool get _firebaseReady {
-    try {
-      return Firebase.apps.isNotEmpty &&
-          GoogleAuthService.instance.currentUser != null;
-    } catch (_) {
-      return false;
-    }
   }
 
   /// Bật/Tắt trạng thái yêu thích

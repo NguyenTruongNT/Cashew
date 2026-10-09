@@ -315,7 +315,7 @@ class DocumentModel {
     this.deadline,
     required this.createdDate,
     required this.updatedDate,
-
+    this.isShared = false,
     this.checksum,
     this.checksumAlgorithm = 'sha256',
     this.version = 1,
@@ -379,6 +379,7 @@ class DocumentModel {
           : null,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
       updatedDate: DateTime.fromMillisecondsSinceEpoch(map['updated_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
 
       checksum: map['checksum'] as String?,
       checksumAlgorithm: map['checksum_algo'] as String? ?? 'sha256',
@@ -412,7 +413,7 @@ class DocumentModel {
     DateTime? deadline,
     DateTime? createdDate,
     DateTime? updatedDate,
-
+    bool? isShared,
     String? checksum,
     String? checksumAlgorithm,
     int? version,
@@ -438,7 +439,7 @@ class DocumentModel {
       deadline: deadline ?? this.deadline,
       createdDate: createdDate ?? this.createdDate,
       updatedDate: updatedDate ?? DateTime.now(),
-
+      isShared: isShared ?? this.isShared,
       checksum: checksum ?? this.checksum,
       checksumAlgorithm: checksumAlgorithm ?? this.checksumAlgorithm,
       version: version ?? this.version,

@@ -2,11 +2,10 @@ import 'package:flutter/foundation.dart';
 
 bool firebaseInitialized = false;
 
-/// True on Web, Android và iOS — các nền tảng có cấu hình Firebase.
+/// Firebase Auth/Storage are configured for Web and Android in this project.
 bool get isFirebaseConfiguredPlatform =>
     kIsWeb ||
-    defaultTargetPlatform == TargetPlatform.android ||
-    defaultTargetPlatform == TargetPlatform.iOS;
+    defaultTargetPlatform == TargetPlatform.android;
 
 /// True khi Firebase đã khởi tạo thành công trên nền tảng được hỗ trợ.
 bool get canUseFirebase => isFirebaseConfiguredPlatform && firebaseInitialized;

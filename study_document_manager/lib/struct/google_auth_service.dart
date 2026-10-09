@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'firebase_platform_support.dart';
 
 class GoogleAuthService {
   GoogleAuthService._();
@@ -10,14 +11,17 @@ class GoogleAuthService {
   static final GoogleAuthService instance = GoogleAuthService._();
 
 
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   bool _googleSignInInitialized = false;
 
-  User? get currentUser => _firebaseAuth.currentUser;
+  bool get isConfigured => canUseFirebase;
 
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  User? get currentUser => isConfigured ? _firebaseAuth.currentUser : null;
+
+  Stream<User?> get authStateChanges =>
+      isConfigured ? _firebaseAuth.authStateChanges() : const Stream.empty();
 
   bool get isSignedIn => currentUser != null;
 
@@ -31,6 +35,9 @@ class GoogleAuthService {
   }
 
   Future<UserCredential> signInWithGoogle() async {
+    if (!isConfigured) {
+      throw StateError('Firebase chưa được cấu hình trên nền tảng hiện tại.');
+    }
     try {
       // Trên Web, Firebase tự mở cửa sổ chọn tài khoản Google.
       if (kIsWeb) {
@@ -43,7 +50,7 @@ class GoogleAuthService {
         return await _firebaseAuth.signInWithPopup(googleProvider);
       }
 
-      // Trên Android/iOS, sử dụng plugin google_sign_in.
+      // Trên Android, sử dụng plugin google_sign_in.
       await _initializeGoogleSignIn();
 
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
@@ -65,7 +72,9 @@ class GoogleAuthService {
   }
 
   Future<void> signOut() async {
-
+    if (!isConfigured) {
+      throw StateError('Firebase chưa được cấu hình trên nền tảng hiện tại.');
+    }
     await _firebaseAuth.signOut();
 
     if (!kIsWeb) {

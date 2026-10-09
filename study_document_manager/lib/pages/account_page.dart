@@ -66,7 +66,7 @@ class _AccountPageState extends State<AccountPage> {
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
-            child: Text('Đăng nhập Firebase hiện hỗ trợ Android, iOS và Web.'),
+            child: Text('Đăng nhập Firebase hiện được cấu hình cho Android và Web.'),
           ),
         ),
       );

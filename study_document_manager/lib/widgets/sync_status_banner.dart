@@ -4,6 +4,7 @@ import '../colors.dart';
 import '../struct/formatters.dart';
 import '../struct/sync/sync_engine.dart';
 import '../struct/sync/sync_global.dart';
+import '../struct/sync/mock_remote_sync_service.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG GIAO DIỆN TÁI SỬ DỤNG: SYNC STATUS BANNER]
@@ -58,19 +59,24 @@ class SyncStatusBanner extends StatelessWidget {
     late final IconData icon;
     late final String title;
     late final String subtitle;
+    final isMock = engine.remote is MockRemoteSyncService;
 
     if (!snap.isOnline) {
       color = AppColors.warning;
       icon = Icons.cloud_off_rounded;
       title = 'Đang ngoại tuyến';
       subtitle = snap.pendingCount > 0
-          ? '${snap.pendingCount} thay đổi chờ đồng bộ khi có mạng'
+          ? '${snap.pendingCount} thay đổi chờ ${isMock ? 'mô phỏng' : 'đồng bộ khi có mạng'}'
+          : isMock
+          ? 'Bản demo đang ngoại tuyến'
           : 'Thay đổi sẽ được đồng bộ khi có mạng trở lại';
     } else if (syncing) {
       color = AppColors.info;
       icon = Icons.sync_rounded;
-      title = 'Đang đồng bộ...';
-      subtitle = 'Đang trao đổi dữ liệu với Cloud';
+      title = isMock ? 'Đang mô phỏng đồng bộ...' : 'Đang đồng bộ...';
+      subtitle = isMock
+          ? 'Dữ liệu đang trao đổi với bộ nhớ demo, không phải Firebase'
+          : 'Đang trao đổi dữ liệu với Cloud';
     } else if (snap.phase == SyncPhase.error) {
       color = AppColors.error;
       icon = Icons.error_outline_rounded;
@@ -81,12 +87,16 @@ class SyncStatusBanner extends StatelessWidget {
       color = AppColors.warning;
       icon = Icons.cloud_upload_rounded;
       title = '${snap.pendingCount} mục chờ đồng bộ';
-      subtitle = 'Đang chờ kết nối để đẩy lên Cloud';
+      subtitle = isMock
+          ? 'Đang chờ chạy đồng bộ mô phỏng trong bản demo'
+          : 'Đang chờ kết nối để đẩy lên Cloud';
     } else {
       color = AppColors.success;
       icon = Icons.cloud_done_rounded;
-      title = 'Đã đồng bộ Cloud';
-      subtitle = snap.lastSyncAt == null
+      title = isMock ? 'Đồng bộ mô phỏng hoàn tất' : 'Đã đồng bộ Cloud';
+      subtitle = isMock
+          ? 'Không đồng bộ metadata lên Firebase; dữ liệu demo nằm trong bộ nhớ'
+          : snap.lastSyncAt == null
           ? 'Chưa đồng bộ lần nào'
           : 'Lần cuối: ${DocumentFormatters.formatDateTime(snap.lastSyncAt!)}';
     }
