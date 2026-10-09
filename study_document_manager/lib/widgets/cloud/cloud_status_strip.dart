@@ -20,42 +20,28 @@ class _CloudStatusStripState extends State<CloudStatusStrip> {
   bool? _hasNetwork;
   Object? _error;
 
-  bool get _isTestEnv {
-    if (kIsWeb) return false;
-    return Platform.environment.containsKey('FLUTTER_TEST');
-  }
-
   @override
   void initState() {
     super.initState();
     _connectivity = widget.connectivity ?? Connectivity();
-
-    if (_isTestEnv && widget.connectivity == null) {
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
       _hasNetwork = true;
       return;
     }
-
-    _checkConnectivity();
-    try {
-      _subscription = _connectivity.onConnectivityChanged.listen(
-        _updateConnectivity,
-        onError: (Object error) {
-          if (mounted) setState(() => _error = error);
-        },
-      );
-    } catch (_) {
-      // Bỏ qua khi chạy trong môi trường chưa đăng ký platform channel
-    }
+    unawaited(_checkConnectivity());
+    _subscription = _connectivity.onConnectivityChanged.listen(
+      _updateConnectivity,
+      onError: (Object error) {
+        if (mounted) setState(() => _error = error);
+      },
+    );
   }
 
   Future<void> _checkConnectivity() async {
     try {
-      final result = await _connectivity.checkConnectivity().timeout(
-        const Duration(milliseconds: 500),
-        onTimeout: () => [ConnectivityResult.none],
-      );
-      _updateConnectivity(result);
-    } on Object catch (error) {
+      final results = await _connectivity.checkConnectivity();
+      _updateConnectivity(results);
+    } catch (error) {
       if (mounted) setState(() => _error = error);
     }
   }
@@ -77,22 +63,18 @@ class _CloudStatusStripState extends State<CloudStatusStrip> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final networkLabel = _error != null
+    final label = _error != null
         ? 'Không xác định được mạng'
         : _hasNetwork == null
         ? 'Đang kiểm tra mạng'
         : _hasNetwork!
         ? 'Có kết nối mạng'
         : 'Ngoại tuyến';
-    final networkIcon = _error != null || _hasNetwork == false
-        ? Icons.cloud_off_rounded
-        : Icons.wifi_rounded;
-    final networkColor = _error != null
+    final color = _error != null
         ? colors.error
         : _hasNetwork == false
         ? colors.tertiary
         : colors.primary;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Wrap(
@@ -100,12 +82,14 @@ class _CloudStatusStripState extends State<CloudStatusStrip> {
         runSpacing: 8,
         children: [
           _StatusChip(
-            icon: networkIcon,
-            label: networkLabel,
-            color: networkColor,
+            icon: _hasNetwork == false
+                ? Icons.cloud_off_rounded
+                : Icons.wifi_rounded,
+            label: label,
+            color: color,
             tooltip: _error == null
                 ? 'Trạng thái kết nối mạng của thiết bị'
-                : 'Không đọc được trạng thái mạng: $_error',
+                : 'Không thể đọc trạng thái mạng: $_error',
           ),
           _StatusChip(
             icon: Icons.sync_disabled_rounded,
@@ -136,31 +120,11 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: Semantics(
-        label: '$label. $tooltip',
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium
-                      ?.copyWith(color: color, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: Chip(
+        avatar: Icon(icon, size: 16, color: color),
+        label: Text(label),
+        side: BorderSide(color: color.withValues(alpha: 0.35)),
+        labelStyle: TextStyle(color: color),
       ),
     );
   }

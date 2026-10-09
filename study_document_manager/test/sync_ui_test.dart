@@ -98,7 +98,7 @@ void main() {
     });
   });
 
-  testWidgets('4. Đã đồng bộ -> hiển thị "Đã đồng bộ Cloud"', (tester) async {
+  testWidgets('4. Mock sync được nhận diện là bản mô phỏng', (tester) async {
     final db = AppDatabase();
     await tester.runAsync(() => db.init(isInMemory: true));
     final engine = SyncEngine(
@@ -117,8 +117,8 @@ void main() {
       MaterialApp(home: Scaffold(body: SyncStatusBanner(engine: engine))),
     );
 
-    expect(find.text('Đã đồng bộ Cloud'), findsOneWidget);
-    expect(find.textContaining('03/10/2026'), findsOneWidget);
+    expect(find.text('Đồng bộ mô phỏng hoàn tất'), findsOneWidget);
+    expect(find.textContaining('Không đồng bộ metadata lên Firebase'), findsOneWidget);
 
     await tester.runAsync(() async {
       await engine.dispose();

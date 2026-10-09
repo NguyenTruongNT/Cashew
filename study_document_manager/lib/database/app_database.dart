@@ -31,6 +31,7 @@ class AppDatabase {
   final List<SubjectModel> _memorySubjects = [];
   final List<String> _memorySubjectOwners = [];
   final List<DocumentModel> _memoryDocuments = [];
+  final List<String> _memoryDocumentOwners = [];
 
   final List<DeleteLogModel> _memoryDeleteLogs = [];
   final List<SyncOutboxEntry> _memoryOutbox = [];
@@ -67,8 +68,8 @@ class AppDatabase {
     await notifySubjectsChanged();
   }
 
-  /// Phiên bản schema hiện tại (v3 bổ sung cột đồng bộ + bảng delete_logs/outbox).
-  static const int schemaVersion = 3;
+  /// v3 adds sync tables; v4 adds owner-scoped records.
+  static const int schemaVersion = 4;
 
   /// Khởi tạo và mở cơ sở dữ liệu
   Future<void> init({bool isInMemory = false}) async {
@@ -105,6 +106,9 @@ class AppDatabase {
 
     }
 
+    if (_db != null) {
+      await _seedSharedData(_db!);
+    }
     await _seedPrivateDataForActiveOwner();
     // Kích hoạt việc đẩy dữ liệu ban đầu vào Streams
     await notifyDocumentsChanged();
@@ -128,6 +132,8 @@ class AppDatabase {
     await db.execute(DeleteLogTable.createTableSql);
     await db.execute(SyncOutboxTable.createTableSql);
     await db.execute(SyncStateTable.createTableSql);
+    await db.execute(SubjectTable.createOwnerIndexSql);
+    await db.execute(DocumentTable.createOwnerIndexSql);
     await _seedDefaultData(db);
   }
 
@@ -156,6 +162,18 @@ class AppDatabase {
       await db.execute(SyncStateTable.createTableSql);
 
     }
+    if (oldVersion < 4) {
+      await db.execute(
+        'ALTER TABLE ${SubjectTable.tableName} '
+        'ADD COLUMN ${SubjectTable.colOwnerId} TEXT NOT NULL DEFAULT \'local\'',
+      );
+      await db.execute(
+        'ALTER TABLE ${DocumentTable.tableName} '
+        'ADD COLUMN ${DocumentTable.colOwnerId} TEXT NOT NULL DEFAULT \'local\'',
+      );
+    }
+    await db.execute(SubjectTable.createOwnerIndexSql);
+    await db.execute(DocumentTable.createOwnerIndexSql);
   }
 
   /// Nạp dữ liệu mẫu ban đầu vào SQLite Database
@@ -304,6 +322,17 @@ class AppDatabase {
       ..addAll(List.filled(_memorySubjects.length, 'local'));
     _memoryDocuments.clear();
     _memoryDocuments.addAll(_buildInitialDocuments(now));
+    _memoryDocumentOwners
+      ..clear()
+      ..addAll(List.filled(_memoryDocuments.length, 'local'));
+    final sharedSubject = _buildSharedSubject(now);
+    _memorySubjects.add(sharedSubject);
+    _memorySubjectOwners.add(sharedOwnerId);
+    final sharedDocuments = _buildSharedDocuments(now, sharedSubject.id);
+    _memoryDocuments.addAll(sharedDocuments);
+    _memoryDocumentOwners.addAll(
+      List.filled(sharedDocuments.length, sharedOwnerId),
+    );
 
     _memoryDeleteLogs.clear();
     _memoryOutbox.clear();
@@ -538,12 +567,13 @@ class AppDatabase {
   /// (dùng cho tầng đồng bộ). Mặc định ẩn các bản ghi đã xóa khỏi UI.
   Future<List<DocumentModel>> getAllDocuments({bool includeDeleted = false}) async {
     if (_useMemoryFallback) {
-
-      final list = List<DocumentModel>.from(
-        includeDeleted
-            ? _memoryDocuments
-            : _memoryDocuments.where((d) => !d.isDeleted),
-      );
+      final list = <DocumentModel>[
+        for (var i = 0; i < _memoryDocuments.length; i++)
+          if ((_memoryDocumentOwners[i] == _activeOwnerId ||
+                  _memoryDocumentOwners[i] == sharedOwnerId) &&
+              (includeDeleted || !_memoryDocuments[i].isDeleted))
+            _memoryDocuments[i],
+      ];
 
       list.sort((a, b) => b.updatedDate.compareTo(a.updatedDate));
       return list;
@@ -551,9 +581,11 @@ class AppDatabase {
 
     final results = await db.query(
       DocumentTable.tableName,
-
-      where: includeDeleted ? null : '${DocumentTable.colIsDeleted} = 0',
-
+      where: includeDeleted
+          ? '${DocumentTable.colOwnerId} IN (?, ?)'
+          : '${DocumentTable.colIsDeleted} = 0 AND '
+                '${DocumentTable.colOwnerId} IN (?, ?)',
+      whereArgs: [_activeOwnerId, sharedOwnerId],
       orderBy: '${DocumentTable.colUpdatedDate} DESC',
     );
     return results.map((row) => DocumentModel.fromMap(row)).toList();
@@ -568,7 +600,13 @@ class AppDatabase {
   }) async {
     if (_useMemoryFallback) {
 
-      var list = _memoryDocuments.where((d) => !d.isDeleted).toList();
+      var list = <DocumentModel>[
+        for (var i = 0; i < _memoryDocuments.length; i++)
+          if ((_memoryDocumentOwners[i] == _activeOwnerId ||
+                  _memoryDocumentOwners[i] == sharedOwnerId) &&
+              !_memoryDocuments[i].isDeleted)
+            _memoryDocuments[i],
+      ];
 
       final trimmed = query.trim().toLowerCase();
       if (trimmed.isNotEmpty) {
@@ -593,8 +631,11 @@ class AppDatabase {
     }
 
 
-    final conditions = <String>['${DocumentTable.colIsDeleted} = 0'];
-    final args = <dynamic>[];
+    final conditions = <String>[
+      '${DocumentTable.colIsDeleted} = 0',
+      '${DocumentTable.colOwnerId} IN (?, ?)',
+    ];
+    final args = <dynamic>[_activeOwnerId, sharedOwnerId];
 
 
     final trimmed = query.trim().toLowerCase();

@@ -19,13 +19,9 @@ class _AccountMenuButtonState extends State<AccountMenuButton> {
   Future<void> _signIn() async {
     setState(() => _isBusy = true);
     try {
-      final result = await GoogleAuthService.signIn();
+      await GoogleAuthService.instance.signInWithGoogle();
       if (!mounted) return;
-      if (result == null) {
-        openSnackbar(context, message: 'Đã hủy đăng nhập Google.');
-      } else {
-        openSnackbar(context, message: 'Đăng nhập thành công.');
-      }
+      openSnackbar(context, message: 'Đăng nhập thành công.');
     } on FirebaseAuthException catch (error) {
       if (mounted) {
         openSnackbar(
@@ -78,7 +74,7 @@ class _AccountMenuButtonState extends State<AccountMenuButton> {
       case 'configuration-not-found':
       case 'auth/configuration-not-found':
         return 'Firebase Authentication chưa được khởi tạo cho project '
-            'document-manager-e4289. Mở Firebase Console > Authentication, '
+            'cashew-study-docs-3afed. Mở Firebase Console > Authentication, '
             'chọn Get started, sau đó bật Google trong Sign-in method '
             '(mã: $code).';
       case 'unauthorized-domain':
@@ -102,7 +98,7 @@ class _AccountMenuButtonState extends State<AccountMenuButton> {
   Future<void> _signOut() async {
     setState(() => _isBusy = true);
     try {
-      await GoogleAuthService.signOut();
+      await GoogleAuthService.instance.signOut();
       if (mounted) {
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
@@ -140,9 +136,19 @@ class _AccountMenuButtonState extends State<AccountMenuButton> {
 
   @override
   Widget build(BuildContext context) {
+    if (!GoogleAuthService.instance.isConfigured) {
+      return IconButton(
+        tooltip: 'Firebase không được hỗ trợ trên nền tảng này',
+        onPressed: () => openSnackbar(
+          context,
+          message: 'Đăng nhập Firebase hiện được cấu hình cho Android và Web.',
+        ),
+        icon: const Icon(Icons.account_circle_outlined),
+      );
+    }
     return StreamBuilder<User?>(
-      stream: GoogleAuthService.authStateChanges,
-      initialData: GoogleAuthService.currentUser,
+      stream: GoogleAuthService.instance.authStateChanges,
+      initialData: GoogleAuthService.instance.currentUser,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return IconButton(

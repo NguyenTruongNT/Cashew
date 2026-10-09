@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,26 +6,18 @@ import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
-
 import '../struct/firebase_storage_service.dart';
 import '../struct/formatters.dart';
 import '../struct/models/document_models.dart';
-import '../widgets/cloud/transfer_progress_bar.dart';
+import '../widgets/cloud/cloud_sync_badge.dart';
 import '../widgets/confirm_delete_dialog.dart';
 import '../widgets/framework/page_framework.dart';
 import 'add_edit_document_page.dart';
 
-// =====================================================================
-// [KIẾN TRÚC CASHEW - TẦNG GIAO DIỆN CHỨC NĂNG: CHI TIẾT TÀI LIỆU]
-// File: lib/pages/document_detail_page.dart
-// Mô tả: Màn hình hiển thị chi tiết tài liệu học tập, bao gồm toàn bộ
-// thông tin, ghi chú, liên kết, tình trạng nộp bài và các thao tác Sửa/Xóa.
-// =====================================================================
-
 class DocumentDetailPage extends StatefulWidget {
-  final String documentId;
-
   const DocumentDetailPage({super.key, required this.documentId});
+
+  final String documentId;
 
   @override
   State<DocumentDetailPage> createState() => _DocumentDetailPageState();
@@ -35,93 +26,82 @@ class DocumentDetailPage extends StatefulWidget {
 class _DocumentDetailPageState extends State<DocumentDetailPage> {
   DocumentModel? _document;
   SubjectModel? _subject;
-  bool _isLoading = true;
-  UploadTask? _uploadTask;
-  StreamSubscription<TaskSnapshot>? _uploadSubscription;
-  bool _isUploading = false;
-  bool _isDownloading = false;
-  int _transferredBytes = 0;
-  int? _totalBytes;
-  String? _transferError;
-  String? _transferFileName;
-  bool _lastTransferWasUpload = false;
+  Object? _loadError;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _load();
   }
 
-  @override
-  void dispose() {
-    unawaited(_uploadSubscription?.cancel());
-    super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    final doc = await database.getDocumentById(widget.documentId);
-    SubjectModel? sub;
-    if (doc != null) {
-      sub = await database.getSubjectById(doc.subjectId);
-    }
-
-    if (mounted) {
+  Future<void> _load() async {
+    try {
+      final document = await database.getDocumentById(widget.documentId);
+      final subject = document == null
+          ? null
+          : await database.getSubjectById(document.subjectId);
+      if (!mounted) return;
       setState(() {
-        _document = doc;
-        _subject = sub;
-        _isLoading = false;
-        _transferError = null;
+        _document = document;
+        _subject = subject;
+        _loadError = null;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = error;
+        _loading = false;
       });
     }
   }
 
   Future<void> _toggleFavorite() async {
-    if (_document == null) return;
-    await DocumentService.toggleFavorite(_document!);
-    await _loadData();
+    final document = _document;
+    if (document == null || document.isShared) return;
+    await DocumentService.toggleFavorite(document);
+    await _load();
   }
 
   Future<void> _toggleStatus() async {
-    if (_document == null) return;
-    await DocumentService.toggleStatus(_document!);
-    await _loadData();
+    final document = _document;
+    if (document == null || document.isShared) return;
+    await DocumentService.toggleStatus(document);
+    await _load();
   }
 
-  void _onEdit() async {
-    if (_document == null) return;
-    final res = await pushRoute(
+  Future<void> _edit() async {
+    final document = _document;
+    if (document == null || document.isShared) return;
+    final changed = await pushRoute<bool>(
       context,
-      AddEditDocumentPage(initialDocument: _document),
+      AddEditDocumentPage(initialDocument: document),
     );
-    if (res == true) {
-      await _loadData();
-    }
+    if (changed == true) await _load();
   }
 
-  void _onDelete() {
-    if (_document == null) return;
-    showDialog(
+  Future<void> _delete() async {
+    final document = _document;
+    if (document == null || document.isShared) return;
+    showDialog<void>(
       context: context,
-      builder: (ctx) => ConfirmDeleteDialog(
-        documentTitle: _document!.title,
+      builder: (dialogContext) => ConfirmDeleteDialog(
+        documentTitle: document.title,
         onConfirm: () async {
           try {
-            await DocumentService.deleteDocument(_document!.id);
+            await DocumentService.deleteDocument(document.id);
             if (mounted) {
-              openSnackbar(context, message: 'Đã xóa tài liệu thành công!');
+              openSnackbar(context, message: 'Đã xóa tài liệu.');
               Navigator.pop(context, true);
-            }
-          } on FirebaseException catch (error) {
-            if (mounted) {
-              openSnackbar(
-                context,
-                message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
-                isError: true,
-              );
             }
           } catch (error) {
             if (mounted) {
-              openSnackbar(context, message: 'Lỗi khi xóa tài liệu: $error', isError: true);
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tài liệu: $error',
+                isError: true,
+              );
             }
           }
         },
@@ -129,519 +109,202 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  void _copyLink(String url) {
-    Clipboard.setData(ClipboardData(text: url));
-    openSnackbar(context, message: 'Đã sao chép liên kết vào bộ nhớ tạm!');
-  }
-
-  Future<void> _openDocumentLink(String source) async {
-    final value = source.trim();
-    final parsedUri = Uri.tryParse(value);
-    if (parsedUri == null || value.isEmpty) {
-      openSnackbar(context, message: 'Đường dẫn tài liệu không hợp lệ.');
-      return;
-    }
-
-    final uri = parsedUri.hasScheme ? parsedUri : Uri.file(value);
-    if (!['http', 'https', 'file'].contains(uri.scheme.toLowerCase())) {
-      openSnackbar(
-        context,
-        message: 'Chỉ hỗ trợ đường dẫn web hoặc đường dẫn tệp.',
-      );
-      return;
-    }
-
+  Future<void> _openSource(String value) async {
     try {
-      final didLaunch = await launchUrl(
+      final uri = Uri.tryParse(value);
+      if (uri == null || !uri.hasScheme) {
+        throw FormatException('Đường dẫn không hợp lệ: $value');
+      }
+      final opened = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
       );
-      if (!didLaunch && mounted) {
-        openSnackbar(context, message: 'Không thể mở nguồn tài liệu này.');
-      }
+      if (!opened) throw StateError('Không tìm thấy ứng dụng để mở liên kết.');
     } on PlatformException catch (error) {
       if (mounted) {
         openSnackbar(
           context,
-          message:
-              'Không thể mở nguồn tài liệu: ${error.message ?? error.code}',
+          message: 'Không thể mở tài liệu: ${error.message ?? error.code}',
+          isError: true,
         );
       }
-    } on UnsupportedError {
+    } catch (error) {
       if (mounted) {
-        openSnackbar(
-          context,
-          message: 'Nền tảng hiện tại không hỗ trợ mở đường dẫn tệp này.',
-        );
+        openSnackbar(context, message: 'Không thể mở tài liệu: $error', isError: true);
       }
     }
   }
 
-  Future<void> _openCloudDocument(String storagePath) async {
+  Future<void> _openStorageObject(String storagePath) async {
     try {
       final url = await FirebaseStorageService.instance.downloadUrl(storagePath);
-      await _openDocumentLink(url);
-    } on FirebaseException catch (error) {
+      await _openSource(url);
+    } catch (error) {
       if (mounted) {
         openSnackbar(
           context,
-          message: 'Không thể tải tệp Firebase: ${error.message ?? error.code}',
+          message: 'Không thể tải tệp từ Firebase Storage: $error',
           isError: true,
         );
       }
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
-    if (_document == null) {
+    if (_loadError != null) {
       return PageFramework(
-        title: 'Tài liệu không tồn tại',
-        body: const Center(
-          child: Text('Tài liệu đã bị xóa hoặc không tìm thấy'),
-        ),
+        title: 'Chi tiết tài liệu',
+        body: Center(child: Text('Không thể tải tài liệu: $_loadError')),
+      );
+    }
+    final document = _document;
+    if (document == null) {
+      return PageFramework(
+        title: 'Không tìm thấy tài liệu',
+        body: const Center(child: Text('Tài liệu đã bị xóa hoặc không tồn tại.')),
       );
     }
 
-    final doc = _document!;
-    final typeColor = doc.type.color;
-    final isAssignment = doc.type == DocumentType.assignment;
-    final isCompleted = doc.status == DocumentStatus.completed;
-    final statusColor = doc.status.color;
+    final isAssignment = document.type == DocumentType.assignment;
+    final isCompleted = document.status == DocumentStatus.completed;
+    final sourceLabel = document.storagePath == null
+        ? document.fileUrl
+        : FirebaseStorageService.fileNameFromPath(document.storagePath!);
 
     return PageFramework(
       title: 'Chi tiết tài liệu',
       actions: [
-        if (!doc.isShared) ...[
+        if (!document.isShared) ...[
           IconButton(
-            icon: Icon(
-              doc.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-              color: doc.isFavorite ? AppColors.warning : null,
-            ),
             onPressed: _toggleFavorite,
             tooltip: 'Yêu thích',
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _onEdit,
-            tooltip: 'Chỉnh sửa',
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.error,
+            icon: Icon(
+              document.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: document.isFavorite ? AppColors.warning : null,
             ),
-            onPressed: _onDelete,
-            tooltip: 'Xóa tài liệu',
+          ),
+          IconButton(
+            onPressed: _edit,
+            tooltip: 'Chỉnh sửa',
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            onPressed: _delete,
+            tooltip: 'Xóa',
+            icon: const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ],
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Card thông tin chính
           Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (doc.isShared) ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.people_outline_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Tài liệu dùng chung · Chỉ đọc',
-                          style: Theme.of(context).textTheme.labelLarge
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ],
+                  if (document.isShared)
+                    const Chip(
+                      avatar: Icon(Icons.people_outline_rounded),
+                      label: Text('Tài liệu dùng chung · Chỉ đọc'),
                     ),
-                    const SizedBox(height: 12),
-                  ],
                   Wrap(
                     spacing: 8,
-                    runSpacing: 8,
                     children: [
-                      // Badge loại
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: typeColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(doc.type.icon, size: 16, color: typeColor),
-                            const SizedBox(width: 6),
-                            Text(
-                              doc.type.displayName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: typeColor,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
+                      Chip(
+                        avatar: Icon(document.type.icon, color: document.type.color),
+                        label: Text(document.type.displayName),
                       ),
-                      // Môn học
                       if (_subject != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _subject!.color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '[${_subject!.code}] ${_subject!.name}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: _subject!.color,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
+                        Chip(label: Text('${_subject!.code} · ${_subject!.name}')),
                     ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Tiêu đề
-                  Text(
-                    doc.title,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      decoration: isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Ngày cập nhật
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Cập nhật: ${DocumentFormatters.formatDateTime(doc.updatedDate)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Nếu là bài tập: Khung trạng thái nộp bài và Deadline
-          if (isAssignment) ...[
-            Card(
-              color: statusColor.withValues(alpha: 0.10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          isCompleted
-                              ? Icons.check_circle_rounded
-                              : Icons.pending_actions_rounded,
-                          color: statusColor,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Trạng thái: ${doc.status.displayName}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: statusColor,
-                                ),
-                              ),
-                              if (doc.deadline != null)
-                                Text(
-                                  'Hạn nộp: ${DocumentFormatters.formatDateTime(doc.deadline)} (${DocumentFormatters.formatRemainingTime(doc.deadline)})',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: statusColor,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isCompleted
-                              ? Theme.of(context).colorScheme.secondary
-                              : AppColors.primary,
-                          foregroundColor: Theme.of(context)
-                              .colorScheme
-                              .onPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: doc.isShared ? null : _toggleStatus,
-                        icon: Icon(
-                          isCompleted
-                              ? Icons.undo_rounded
-                              : Icons.check_circle_outline,
-                        ),
-                        label: Text(
-                          isCompleted
-                              ? 'Đổi thành: Chưa xong'
-                              : 'Xác nhận: Đã nộp bài tập',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Ghi chú & Tóm tắt
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.notes_rounded,
-                        size: 20,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Ghi chú & Tóm tắt',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 20),
                   Text(
-                    doc.notes.isNotEmpty
-                        ? doc.notes
-                        : 'Không có ghi chú nào cho tài liệu này.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: doc.notes.isNotEmpty
-                          ? Theme.of(context).colorScheme.onSurface
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    document.title,
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-
-          // Liên kết tài liệu / File đính kèm
-          if (doc.fileUrl.isNotEmpty || doc.storagePath != null) ...[
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.attachment_rounded,
-                          size: 20,
-                          color: AppColors.accent,
-
-                        ),
-                      ),
-                      if (!doc.isShared)
-                        IconButton(
-                          onPressed: _isUploading || _isDownloading
-                              ? null
-                              : _pickAndUploadFile,
-                          tooltip: doc.fileUrl.isEmpty
-                              ? 'Đính kèm tệp'
-                              : 'Thay thế tệp đính kèm',
-                          icon: const Icon(Icons.upload_file_rounded),
-                        ),
-                    ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Cập nhật ${DocumentFormatters.formatDateTime(document.updatedDate)}',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  if (doc.fileUrl.isNotEmpty) ...[
-                    const Divider(height: 20),
-
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(10),
+                  if (isAssignment) ...[
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        isCompleted
+                            ? Icons.check_circle_outline
+                            : Icons.pending_actions_outlined,
+                        color: document.status.color,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.link_rounded,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: InkWell(
-                              onTap: doc.storagePath != null
-                                  ? () => _openCloudDocument(doc.storagePath!)
-                                  : () => _openDocumentLink(doc.fileUrl),
-                              child: Text(
-                                doc.storagePath == null
-                                    ? doc.fileUrl
-                                    : doc.storagePath!.split('/').last,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                      title: Text('Trạng thái: ${document.status.displayName}'),
+                      subtitle: document.deadline == null
+                          ? null
+                          : Text(
+                              'Hạn nộp: ${DocumentFormatters.formatDateTime(document.deadline)}',
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                            onPressed: doc.storagePath != null
-                                ? () => _openCloudDocument(doc.storagePath!)
-                                : () => _openDocumentLink(doc.fileUrl),
-                            tooltip: 'Mở tài liệu',
-                          ),
-                          if (doc.storagePath == null)
-                            IconButton(
-                              icon: const Icon(Icons.copy_rounded, size: 18),
-                              onPressed: () => _copyLink(doc.fileUrl),
-                              tooltip: 'Sao chép liên kết',
+                      trailing: document.isShared
+                          ? null
+                          : IconButton(
+                              tooltip: 'Đổi trạng thái',
+                              onPressed: _toggleStatus,
+                              icon: const Icon(Icons.swap_horiz_rounded),
                             ),
-                        ],
-                      ),
                     ),
                   ],
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Thẻ phân loại (Tags)
-          if (doc.tags.isNotEmpty) ...[
+          if (document.notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.tag_rounded,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Thẻ phân loại (Tags)',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doc.tags.map((tag) {
-                        return Chip(
-                          label: Text('#$tag'),
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.10,
-                          ),
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          side: BorderSide.none,
-                        );
-                      }).toList(),
-                    ),
+                    Text('Ghi chú', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    SelectableText(document.notes),
                   ],
                 ),
               ),
+            ),
+          ],
+          if (sourceLabel.isNotEmpty || document.localPath != null) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.attach_file_rounded),
+                title: Text(sourceLabel.isEmpty ? 'Tệp lưu cục bộ' : sourceLabel),
+                subtitle: document.storagePath != null
+                    ? const CloudSyncBadge(fileUrl: null)
+                    : Text(document.localPath ?? document.fileUrl),
+                trailing: sourceLabel.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Mở tài liệu',
+                        onPressed: document.storagePath != null
+                            ? () => _openStorageObject(document.storagePath!)
+                            : () => _openSource(document.fileUrl),
+                        icon: const Icon(Icons.open_in_new_rounded),
+                      ),
+              ),
+            ),
+          ],
+          if (document.tags.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: document.tags.map((tag) => Chip(label: Text('#$tag'))).toList(),
             ),
           ],
         ],

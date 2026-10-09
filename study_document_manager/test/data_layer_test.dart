@@ -100,6 +100,24 @@ void main() {
       );
     });
 
+    test('Shared documents cannot be updated or deleted', () async {
+      final sharedDocument = (await db.getAllDocuments()).firstWhere(
+        (document) => document.isShared,
+      );
+
+      expect(
+        await db.updateDocument(
+          sharedDocument.copyWith(title: 'Unauthorized edit'),
+        ),
+        0,
+      );
+      expect(await db.deleteDocument(sharedDocument.id), 0);
+      expect(
+        (await db.getDocumentById(sharedDocument.id))?.title,
+        sharedDocument.title,
+      );
+    });
+
     test('5. Tìm kiếm tài liệu theo từ khóa và bộ lọc (Search)', () async {
       // Tìm kiếm theo từ khóa có trong tiêu đề
       final searchByKeyword = await db.searchDocuments(query: 'Cashew');
@@ -142,6 +160,5 @@ void main() {
         await db.insertDocument(testDoc);
       },
     );
-
   });
 }

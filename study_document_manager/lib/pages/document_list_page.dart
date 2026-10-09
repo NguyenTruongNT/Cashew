@@ -1,5 +1,8 @@
+import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
@@ -24,11 +27,7 @@ class DocumentListPage extends StatefulWidget {
   final String? initialSubjectId;
   final DocumentType? initialType;
 
-  const DocumentListPage({
-    super.key,
-    this.initialSubjectId,
-    this.initialType,
-  });
+  const DocumentListPage({super.key, this.initialSubjectId, this.initialType});
 
   @override
   State<DocumentListPage> createState() => _DocumentListPageState();
@@ -135,13 +134,18 @@ class _DocumentListPageState extends State<DocumentListPage> {
             if (mounted) {
               openSnackbar(
                 context,
-                message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+                message:
+                    'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
                 isError: true,
               );
             }
           } catch (error) {
             if (mounted) {
-              openSnackbar(context, message: 'Không thể xóa tài liệu: $error', isError: true);
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tài liệu: $error',
+                isError: true,
+              );
             }
           }
         },
@@ -152,7 +156,9 @@ class _DocumentListPageState extends State<DocumentListPage> {
   void _showSortDialog() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -162,7 +168,10 @@ class _DocumentListPageState extends State<DocumentListPage> {
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Text('Sắp xếp danh sách tài liệu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(
+                  'Sắp xếp danh sách tài liệu',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
               const Divider(),
               RadioListTile<DocumentSortOption>(
@@ -256,25 +265,37 @@ class _DocumentListPageState extends State<DocumentListPage> {
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String?>(
                         isExpanded: true,
-                        value: (_selectedSubjectId != null &&
+                        value:
+                            (_selectedSubjectId != null &&
                                 _subjectMap.containsKey(_selectedSubjectId))
                             ? _selectedSubjectId
                             : null,
-                        hint: const Text('Tất cả môn học', style: TextStyle(fontSize: 12)),
+                        hint: const Text(
+                          'Tất cả môn học',
+                          style: TextStyle(fontSize: 12),
+                        ),
                         items: [
                           const DropdownMenuItem<String?>(
                             value: null,
-                            child: Text('Tất cả môn học', style: TextStyle(fontSize: 12)),
+                            child: Text(
+                              'Tất cả môn học',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
                           ..._subjectMap.values.map(
                             (s) => DropdownMenuItem<String?>(
                               value: s.id,
-                              child: Text('[${s.code}] ${s.name}', style: const TextStyle(fontSize: 12)),
+                              child: Text(
+                                '[${s.code}] ${s.name}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ),
                           ),
                         ],
@@ -287,17 +308,24 @@ class _DocumentListPageState extends State<DocumentListPage> {
                 ),
                 const SizedBox(width: 8),
                 FilterChip(
-                  label: const Text('Quan trọng', style: TextStyle(fontSize: 12)),
+                  label: const Text(
+                    'Quan trọng',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   selected: _onlyFavorites,
                   avatar: Icon(
-                    _onlyFavorites ? Icons.star_rounded : Icons.star_border_rounded,
+                    _onlyFavorites
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     size: 16,
                     color: _onlyFavorites
                         ? AppColors.warning
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   selectedColor: AppColors.warning.withValues(alpha: 0.14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   onSelected: (val) {
                     setState(() => _onlyFavorites = val);
                   },
