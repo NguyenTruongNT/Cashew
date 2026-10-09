@@ -1,6 +1,15 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:uuid/uuid.dart';
+
 import '../database/databaseGlobal.dart';
+import 'checksum_utils.dart';
 import 'firebase_storage_service.dart';
+import 'google_auth_service.dart';
 import 'models/document_models.dart';
+import 'models/sync_models.dart';
+import 'sync/sync_global.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG NGHIỆP VỤ: DỊCH VỤ XỬ LÝ LOGIC (DOCUMENT SERVICE)]
@@ -196,10 +205,44 @@ class DocumentService {
 
   // ===================================================================
   // 3. ĐIỀU PHỐI THAO TÁC CƠ SỞ DỮ LIỆU (DATABASE ORCHESTRATION)
+  // Chiến lược Offline-First: ghi cục bộ ngay + đưa vào outbox để đồng bộ.
   // ===================================================================
 
-  /// Tạo mới tài liệu có kiểm tra tính hợp lệ
-  static Future<void> saveDocument(DocumentModel document) async {
+  /// Xử lý tệp đính kèm: tính checksum và cache cục bộ (nếu bật đồng bộ).
+  static Future<DocumentModel> _attachFileIfAny(
+    DocumentModel document, {
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
+    if (fileBytes == null || fileBytes.isEmpty) return document;
+
+    final checksum = ChecksumUtils.computeResult(
+      fileBytes,
+      algorithm: ChecksumUtils.defaultAlgorithm,
+    );
+    var result = document.copyWith(
+      checksum: checksum.value,
+      checksumAlgorithm: checksum.algorithm.nameString,
+      updatedDate: document.updatedDate,
+    );
+
+    if (syncEngine != null) {
+      final path = await syncEngine!.fileStore.save(
+        fileName ?? '${document.id}.bin',
+        fileBytes,
+      );
+      result = result.copyWith(localPath: path, updatedDate: result.updatedDate);
+    }
+    return result;
+  }
+
+  /// Tạo mới tài liệu có kiểm tra tính hợp lệ (Offline-First).
+  static Future<void> saveDocument(
+    DocumentModel document, {
+    List<int>? fileBytes,
+    String? fileName,
+    bool fileAlreadyUploaded = false,
+  }) async {
     final titleError = validateTitle(document.title);
     if (titleError != null) {
       throw ArgumentError(titleError);
@@ -209,26 +252,124 @@ class DocumentService {
       throw ArgumentError(urlError);
     }
 
-    await database.insertDocument(document);
+    var doc = await _attachFileIfAny(
+      document,
+      fileBytes: fileBytes,
+      fileName: fileName,
+    );
+    doc = doc.copyWith(
+      syncStatus: isSyncEnabled ? SyncStatus.pendingUpload : SyncStatus.localOnly,
+      updatedDate: doc.updatedDate,
+    );
+    await database.insertDocument(doc);
+    await _enqueueAndSync(
+      doc.id,
+      SyncOperation.upsert,
+      payload: {'file_uploaded': fileAlreadyUploaded},
+    );
   }
 
-  /// Cập nhật tài liệu
-  static Future<void> updateDocument(DocumentModel document) async {
+  /// Cập nhật tài liệu (Offline-First, tăng version để phát hiện xung đột).
+  static Future<void> updateDocument(
+    DocumentModel document, {
+    List<int>? fileBytes,
+    String? fileName,
+    bool fileAlreadyUploaded = false,
+  }) async {
     final titleError = validateTitle(document.title);
     if (titleError != null) {
       throw ArgumentError(titleError);
     }
-    final updated = document.copyWith(updatedDate: DateTime.now());
-    await database.updateDocument(updated);
+
+    var doc = document.copyWith(
+      updatedDate: DateTime.now(),
+      version: document.version + 1,
+    );
+    doc = await _attachFileIfAny(doc, fileBytes: fileBytes, fileName: fileName);
+    doc = doc.copyWith(
+      syncStatus: isSyncEnabled ? SyncStatus.pendingUpload : doc.syncStatus,
+      updatedDate: doc.updatedDate,
+    );
+    await database.updateDocument(doc);
+    await _enqueueAndSync(
+      doc.id,
+      SyncOperation.upsert,
+      payload: {'file_uploaded': fileAlreadyUploaded},
+    );
   }
 
-  /// Xóa tài liệu
+  /// Xóa tài liệu theo cơ chế tombstone: ghi `delete_logs` + outbox,
+  /// sau đó xóa cục bộ. Cloud sẽ được đồng bộ khi có mạng.
   static Future<void> deleteDocument(String id) async {
     final document = await database.getDocumentById(id);
-    if (document?.storagePath case final storagePath?) {
-      await FirebaseStorageService.instance.delete(storagePath);
+    final storagePath = document?.storagePath;
+    final deleteLogId = const Uuid().v4();
+
+    await database.insertDeleteLog(
+      DeleteLogModel(
+        id: deleteLogId,
+        documentId: id,
+        ownerId: syncEngine?.ownerId,
+        storagePath: storagePath,
+        checksum: document?.checksum,
+        deletedAt: DateTime.now(),
+        source: 'local',
+        syncStatus: DeleteLogStatus.pending,
+      ),
+    );
+
+    if (document?.localPath case final localPath?) {
+      if (syncEngine != null) {
+        await syncEngine!.fileStore.delete(localPath);
+      }
     }
+
     await database.deleteDocument(id);
+
+    // Dọn tệp trên Firebase Storage (nếu đang đăng nhập) để tránh tệp mồ côi.
+    if (storagePath != null && _firebaseReady) {
+      try {
+        await FirebaseStorageService.instance.delete(storagePath);
+      } catch (_) {
+        // Bỏ qua: tệp sẽ được đối soát lại khi đồng bộ.
+      }
+    }
+
+    if (isSyncEnabled) {
+      await database.enqueueOutbox(
+        entityId: id,
+        operation: SyncOperation.delete,
+        payload: {
+          'delete_log_id': deleteLogId,
+          'storage_path': storagePath,
+        },
+      );
+      unawaited(syncEngine!.syncNow());
+    }
+  }
+
+  /// Đưa thao tác vào outbox và kích hoạt đồng bộ nền (nếu đã bật).
+  static Future<void> _enqueueAndSync(
+    String documentId,
+    SyncOperation operation, {
+    Map<String, dynamic>? payload,
+  }) async {
+    if (!isSyncEnabled) return;
+    await database.enqueueOutbox(
+      entityId: documentId,
+      operation: operation,
+      payload: payload,
+    );
+    unawaited(syncEngine!.syncNow());
+  }
+
+  static bool get _firebaseReady {
+    try {
+      return Firebase.apps.isNotEmpty &&
+          GoogleAuthService.instance.currentUser != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Bật/Tắt trạng thái yêu thích

@@ -10,6 +10,7 @@ import '../struct/document_service.dart';
 import '../struct/models/document_models.dart';
 import '../widgets/document_card.dart';
 import '../widgets/framework/page_framework.dart';
+import '../widgets/sync_status_banner.dart';
 import 'add_edit_document_page.dart';
 import 'document_detail_page.dart';
 import 'document_list_page.dart';
@@ -138,6 +139,9 @@ class _HomePageState extends State<HomePage> {
           return ListView(
             padding: const EdgeInsets.only(bottom: 90),
             children: [
+              // 0. THẺ TRẠNG THÁI ĐỒNG BỘ OFFLINE-FIRST (Online/Offline)
+              const SyncStatusBanner(),
+
               // 1. BANNER THỐNG KÊ TỔNG QUAN PHONG CÁCH CASHEW
               Container(
                 margin: const EdgeInsets.all(16),

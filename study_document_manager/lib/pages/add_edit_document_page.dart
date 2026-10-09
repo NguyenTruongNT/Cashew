@@ -257,21 +257,33 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
       final documentId = widget.initialDocument?.id ?? const Uuid().v4();
       final oldStoragePath = widget.initialDocument?.storagePath;
       String? uploadedStoragePath;
+
+      // Đọc bytes tệp đã chọn để tính checksum + cache cục bộ (Offline-First).
+      List<int>? selectedBytes;
       if (_selectedCloudFile != null) {
-        if (GoogleAuthService.instance.currentUser == null) {
-          throw StateError(
-            'Hãy đăng nhập Google trước khi tải tệp lên Firebase.',
-          );
-        }
-        uploadedStoragePath = await FirebaseStorageService.instance
-            .uploadDocument(
-              file: _selectedCloudFile!,
-              documentId: documentId,
-              onProgress: (progress) {
-                if (mounted) setState(() => _uploadProgress = progress);
-              },
+        selectedBytes = await _selectedCloudFile!.readAsBytes();
+        final canUploadToFirebase =
+            GoogleAuthService.instance.isConfigured &&
+            GoogleAuthService.instance.currentUser != null;
+        if (canUploadToFirebase) {
+          try {
+            uploadedStoragePath = await FirebaseStorageService.instance
+                .uploadDocument(
+                  file: _selectedCloudFile!,
+                  documentId: documentId,
+                  onProgress: (progress) {
+                    if (mounted) setState(() => _uploadProgress = progress);
+                  },
+                );
+            _storagePath = uploadedStoragePath;
+          } catch (error) {
+            // Mất mạng / lỗi tải lên: giữ tệp cục bộ và đồng bộ sau.
+            debugPrint(
+              '[Offline-First] Tải lên Firebase thất bại, lưu cục bộ: $error',
             );
-        _storagePath = uploadedStoragePath;
+            uploadedStoragePath = null;
+          }
+        }
       }
 
       final now = DateTime.now();
@@ -307,9 +319,19 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
 
       try {
         if (isEditing) {
-          await DocumentService.updateDocument(document);
+          await DocumentService.updateDocument(
+            document,
+            fileBytes: selectedBytes,
+            fileName: _selectedCloudFile?.name,
+            fileAlreadyUploaded: uploadedStoragePath != null,
+          );
         } else {
-          await DocumentService.saveDocument(document);
+          await DocumentService.saveDocument(
+            document,
+            fileBytes: selectedBytes,
+            fileName: _selectedCloudFile?.name,
+            fileAlreadyUploaded: uploadedStoragePath != null,
+          );
         }
       } catch (_) {
         if (uploadedStoragePath != null) {
