@@ -23,7 +23,7 @@
 
 ### 👥 2. Bảng Phân Chia Công Việc: Bài Tập Phân Tích & Lập Phương Án Tích Hợp Cloud DMS
 
-Nhóm 16 đã phân công cụ thể từng đầu việc cho 4 thành viên để hoàn thành toàn bộ bài tập phân tích kiến trúc và đề xuất phương án:
+Nhóm 12 đã phân công cụ thể từng đầu việc cho 4 thành viên để hoàn thành toàn bộ bài tập phân tích kiến trúc và đề xuất phương án:
 
 | STT | Thành Viên | Vai Trò | Nhiệm Vụ Phân Tích & Xây Dựng Báo Cáo | Sản Phẩm Bàn Giao | Trạng Thái |
 |:---:|:---|:---:|:---|:---|:---:|
@@ -95,7 +95,7 @@ flowchart TD
 
 ### 🚀 4. Kế Hoạch & Bảng Phân Chia Công Việc Lập Trình Bài Tập Tiếp Theo
 
-Nhóm 16 thống nhất quy trình Git Flow: Mỗi thành viên tạo nhánh riêng `<tiền_tố>-<tên_chức_năng>`, hoàn thiện và tạo Pull Request (PR) để Nhóm trưởng review trước khi merge vào `main`.
+Nhóm 12 thống nhất quy trình Git Flow: Mỗi thành viên tạo nhánh riêng `<tiền_tố>-<tên_chức_năng>`, hoàn thiện và tạo Pull Request (PR) để Nhóm trưởng review trước khi merge vào `main`.
 
 | STT | Thành Viên | Vai Trò | Nhiệm Vụ Kỹ Thuật Phụ Trách | Sản Phẩm Bàn Giao | Tên Nhánh Git | Trạng Thái |
 |:---:|:---|:---:|:---|:---|:---:|:---:|
