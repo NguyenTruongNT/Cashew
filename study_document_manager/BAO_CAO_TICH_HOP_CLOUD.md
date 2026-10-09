@@ -53,7 +53,168 @@ Hiện tại, **chưa có thành phần File Storage thực thụ**:
 - Chưa thấy mã chọn tệp, đọc byte, upload/download, kiểm tra quyền tệp, hay lưu nội dung tệp trong SQLite hoặc dịch vụ ngoài.
 
 Vì thế, tài liệu thật đang được lưu ở nơi khác do người dùng cung cấp liên kết; DB chỉ lưu metadata/tham chiếu. Không nên mô tả hệ thống hiện tại như đã có kho tệp cục bộ hoặc Cloud.
+### 1.5. Đánh giá tổng hợp mức độ sẵn sàng chuyển đổi Cloud
 
+Mức độ sẵn sàng chuyển đổi Cloud, hay **Cloud-readiness**, được đánh giá dựa trên ba yếu tố chính:
+
+1. Khả năng tái sử dụng các thành phần hiện có.
+2. Khối lượng thay đổi cần thực hiện khi tích hợp Cloud.
+3. Mức độ phức tạp và rủi ro kỹ thuật trong quá trình chuyển đổi.
+
+#### Bảng đánh giá tổng hợp
+
+| Thành phần | Hiện trạng và khả năng tái sử dụng | Thay đổi cần thực hiện | Mức sẵn sàng |
+|---|---|---|:---:|
+| **Frontend Flutter** | Có thể giữ lại phần lớn màn hình, widget, điều hướng, bộ lọc và giao diện hiện tại. Flutter có khả năng triển khai đa nền tảng trên Web, Android và Desktop. | Bổ sung màn hình đăng nhập, quản lý trạng thái xác thực, chọn tệp, hiển thị tiến trình upload/download, thông báo lỗi mạng và trạng thái đồng bộ. | **Cao** |
+| **Tầng nghiệp vụ `DocumentService`** | Có thể tái sử dụng các quy tắc kiểm tra dữ liệu, lọc, sắp xếp và thống kê tài liệu. | Tách Repository khỏi SQLite singleton; bổ sung Local Repository, Remote Repository, Sync Repository và cơ chế xử lý lỗi mạng. | **Trung bình – Cao** |
+| **Metadata Database SQLite** | Có thể tiếp tục sử dụng làm Local Cache, hỗ trợ tải dữ liệu nhanh và làm việc ngoại tuyến. | Bổ sung các trường `ownerId`, `cloudPath`, `downloadUrl`, `syncStatus`, `checksum`, `version`, `updatedAt`, `isDeleted` và xây dựng cơ chế migration. | **Trung bình** |
+| **File Storage** | Trường `fileUrl` hiện tại có thể được chuyển thành tham chiếu đến tệp trên Cloud. | Xây dựng chức năng chọn tệp, upload, download, hiển thị tiến trình, kiểm tra kích thước, định dạng tệp và phân quyền truy cập. | **Trung bình** |
+| **Xác thực và phân quyền** | Source hiện tại chưa có chức năng đăng nhập, nhận dạng người dùng và kiểm soát quyền sở hữu tài liệu. | Tích hợp Firebase Authentication, Google Sign-In và liên kết tài liệu với Firebase UID của người sở hữu. | **Thấp** |
+| **Đồng bộ đa thiết bị** | Chưa có cơ chế đồng bộ giữa nhiều thiết bị hoặc nhiều phiên đăng nhập. | Xây dựng hàng đợi thay đổi, cơ chế retry, phát hiện xung đột, quản lý phiên bản và chính sách giải quyết xung đột. | **Thấp – Trung bình** |
+
+#### Phân tích kết quả
+
+##### a. Frontend Flutter
+
+Frontend là thành phần có mức sẵn sàng cao nhất. Các màn hình quản lý tài liệu, tìm kiếm, lọc, thêm, sửa và xem chi tiết có thể tiếp tục được sử dụng khi tích hợp Cloud.
+
+Thay đổi chủ yếu tập trung vào việc bổ sung:
+
+- Màn hình đăng nhập bằng Google.
+- Trạng thái người dùng đang đăng nhập.
+- Chức năng chọn tệp từ thiết bị.
+- Thanh tiến trình upload và download.
+- Thông báo khi mất kết nối mạng.
+- Trạng thái tài liệu đã đồng bộ hoặc đang chờ đồng bộ.
+
+Frontend không nên gọi trực tiếp Firebase Storage tại nhiều widget khác nhau. Các thao tác Cloud nên được đóng gói trong Service hoặc Repository riêng để bảo đảm khả năng bảo trì và kiểm thử.
+
+##### b. Tầng nghiệp vụ
+
+`DocumentService` hiện thực hiện kiểm tra dữ liệu, lọc, sắp xếp, thống kê và gọi trực tiếp đến database cục bộ. Phần logic này có thể được tái sử dụng, nhưng cần giảm sự phụ thuộc trực tiếp vào SQLite.
+
+Kiến trúc đề xuất gồm:
+
+```text
+Presentation Layer
+        │
+        ▼
+Use Case / Document Service
+        │
+        ▼
+Document Repository
+   ┌────┴─────┐
+   ▼          ▼
+Local       Remote
+Repository  Repository
+   │          │
+SQLite       Cloud
+```
+
+Việc bổ sung Repository interface giúp ứng dụng có thể chuyển đổi giữa dữ liệu local và Cloud mà không phải viết lại toàn bộ giao diện.
+
+##### c. Metadata Database
+
+SQLite vẫn phù hợp để:
+
+- Lưu bộ nhớ đệm cục bộ.
+- Tải nhanh danh sách tài liệu.
+- Hỗ trợ chế độ ngoại tuyến.
+- Lưu hàng đợi thay đổi chưa đồng bộ.
+- Giảm số lần truy vấn Cloud không cần thiết.
+
+Tuy nhiên, metadata cần được mở rộng để hỗ trợ đồng bộ:
+
+| Trường đề xuất | Mục đích |
+|---|---|
+| `ownerId` | Lưu Firebase UID của chủ sở hữu tài liệu |
+| `cloudPath` | Lưu đường dẫn của tệp trên Cloud Storage |
+| `downloadUrl` | Lưu URL tải xuống khi cần thiết |
+| `syncStatus` | Xác định trạng thái đã đồng bộ, đang chờ hoặc bị lỗi |
+| `checksum` | Kiểm tra tính toàn vẹn của tệp |
+| `version` | Hỗ trợ phát hiện và giải quyết xung đột |
+| `updatedAt` | So sánh thời điểm cập nhật giữa local và Cloud |
+| `isDeleted` | Hỗ trợ xóa mềm và đồng bộ thao tác xóa |
+
+##### d. File Storage
+
+Ứng dụng hiện chưa có hệ thống quản lý nội dung tệp hoàn chỉnh. Trường `fileUrl` mới chỉ lưu chuỗi URL hoặc đường dẫn do người dùng nhập.
+
+Khi tích hợp Cloud, File Storage cần hỗ trợ:
+
+- Chọn tệp PDF, DOCX, PPTX hoặc hình ảnh.
+- Kiểm tra loại và kích thước tệp.
+- Upload tệp lên Cloud Storage.
+- Hiển thị phần trăm tiến trình.
+- Dừng hoặc thử lại khi upload thất bại.
+- Download hoặc mở tệp.
+- Xóa tệp theo quyền của người sở hữu.
+- Kiểm tra checksum khi cần thiết.
+
+Cấu trúc lưu trữ đề xuất:
+
+```text
+users/
+└── {uid}/
+    └── documents/
+        └── {documentId}/
+            └── {fileName}
+```
+
+##### e. Xác thực và phân quyền
+
+Đây là thành phần chưa tồn tại trong source hiện tại. Ứng dụng cần bổ sung Firebase Authentication và Google Sign-In để xác định người đang sử dụng hệ thống.
+
+Sau khi đăng nhập, Firebase cung cấp UID của người dùng. UID này được sử dụng để:
+
+- Gắn tài liệu với chủ sở hữu.
+- Phân chia thư mục trên Cloud Storage.
+- Kiểm tra quyền đọc, ghi và xóa.
+- Hạn chế người dùng truy cập tài liệu không thuộc quyền sở hữu.
+- Ghi nhật ký thao tác khi cần thiết.
+
+Việc kiểm tra quyền không nên chỉ thực hiện tại giao diện. Quyền truy cập thực tế phải được bảo vệ bằng Firebase Security Rules hoặc Backend đáng tin cậy.
+
+##### f. Đồng bộ đa thiết bị
+
+Đồng bộ đa thiết bị là thành phần phức tạp vì phải xử lý trường hợp cùng một tài liệu được thay đổi trên nhiều thiết bị.
+
+Cơ chế đề xuất gồm:
+
+1. Lưu thay đổi tại SQLite.
+2. Đánh dấu bản ghi ở trạng thái chờ đồng bộ.
+3. Đưa thao tác vào hàng đợi cục bộ.
+4. Gửi thay đổi lên Cloud khi có mạng.
+5. So sánh `version` và `updatedAt`.
+6. Phát hiện thay đổi xung đột.
+7. Áp dụng chính sách giải quyết xung đột.
+8. Cập nhật lại Local Cache sau khi đồng bộ thành công.
+
+#### Ma trận ưu tiên chuyển đổi
+
+| Mức ưu tiên | Thành phần | Lý do |
+|:---:|---|---|
+| **1** | Xác thực và phân quyền | Là nền tảng để xác định chủ sở hữu và bảo vệ tài liệu |
+| **2** | File Storage | Giải quyết nhu cầu lưu trữ tập trung và truy cập từ xa |
+| **3** | Metadata Database | Liên kết metadata local với người dùng và tệp Cloud |
+| **4** | Frontend | Bổ sung màn hình đăng nhập, tiến trình và chỉ báo đồng bộ |
+| **5** | Đồng bộ đa thiết bị | Thực hiện sau khi xác thực và lưu trữ Cloud hoạt động ổn định |
+
+> **Lưu ý:** Thứ tự trên là phương án triển khai do nhóm đề xuất, không phải thứ hạng cố định của các nền tảng Cloud.
+
+#### Kết luận Cloud-readiness
+
+Frontend Flutter và phần lớn logic nghiệp vụ có khả năng tái sử dụng cao. SQLite có thể tiếp tục được sử dụng làm Local Cache để hỗ trợ tốc độ truy cập và chế độ ngoại tuyến.
+
+Các thành phần cần đầu tư xây dựng nhiều nhất gồm:
+
+- Xác thực người dùng.
+- Phân quyền theo chủ sở hữu.
+- Lưu nội dung tệp trên Cloud.
+- Đồng bộ dữ liệu đa thiết bị.
+- Phát hiện và xử lý xung đột.
+
+Tổng thể, ứng dụng có mức sẵn sàng chuyển đổi Cloud ở mức **trung bình đến cao**. Phương án phù hợp là chuyển đổi theo từng giai đoạn, giữ lại Flutter và SQLite, đồng thời bổ sung Firebase Authentication, Cloud Storage và cơ chế đồng bộ.
 ## 2. Các điểm nghẽn của mô hình truyền thống hiện tại
 
 Ở phạm vi mã nguồn này, “truyền thống” là ứng dụng và DB chạy cục bộ trên thiết bị, không phải một server on-premises đã được triển khai riêng. Các hạn chế quan sát được:
@@ -88,7 +249,164 @@ Chọn **Hybrid Cloud** thay vì chuyển toàn bộ ứng dụng sang Cloud ho�
 | Giám sát và khóa | **Amazon CloudWatch + AWS KMS** | Theo dõi lỗi/độ trễ API, cảnh báo và quản lý khóa mã hóa. Không ghi token hay URL ký có thể truy cập tệp vào log. |
 
 **Mô hình lưu dữ liệu đề xuất:** PostgreSQL lưu metadata và object key, không lưu nội dung file dạng BLOB. S3 giữ file. Ví dụ một document có `id`, `owner_id`, `subject_id`, metadata, `object_key`, `content_type`, `size_bytes`, `checksum`, `version` và timestamps. Mọi bản ghi và object key đều phải gắn với phạm vi người dùng/nhóm được cấp quyền.
+### 3.3. So sánh Amazon S3, Google Cloud Storage và Azure Blob Storage
 
+Amazon S3, Google Cloud Storage và Azure Blob Storage đều cung cấp mô hình **Object Storage**, phù hợp để lưu trữ các tệp PDF, DOCX, PPTX, hình ảnh và các dạng dữ liệu nhị phân khác.
+
+Metadata của tài liệu nên được lưu trong database riêng. Object Storage chỉ lưu nội dung tệp và các thuộc tính kỹ thuật liên quan.
+
+#### Bảng so sánh tổng hợp
+
+| Tiêu chí | Amazon S3 | Google Cloud Storage / Firebase Storage | Azure Blob Storage |
+|---|---|---|---|
+| **Nhà cung cấp** | Amazon Web Services | Google Cloud và Firebase | Microsoft Azure |
+| **Loại dịch vụ** | Object Storage | Object Storage | Object Storage |
+| **Tích hợp với Flutter** | Thông qua REST API, SDK hoặc Backend cấp Pre-signed URL | Tích hợp thuận lợi qua FlutterFire `firebase_storage` | Thông qua REST API, SDK hoặc Backend cấp SAS |
+| **Xác thực** | IAM, Cognito, STS | Firebase Authentication, Google Cloud IAM | Microsoft Entra ID, Azure RBAC |
+| **Phân quyền tệp** | IAM Policy, Bucket Policy và quyền theo object | Firebase Security Rules có thể kiểm tra UID | Role-Based Access Control và SAS |
+| **Upload trực tiếp** | Pre-signed PUT hoặc POST URL | Firebase Storage `UploadTask` | Shared Access Signature URL |
+| **Theo dõi tiến trình** | Theo dõi qua HTTP client hoặc SDK | Có `TaskSnapshot` và trạng thái tiến trình | Theo dõi qua HTTP client hoặc SDK |
+| **Quản lý phiên bản** | S3 Versioning | Object Versioning | Blob Versioning |
+| **Quản lý vòng đời** | S3 Lifecycle Rules | Object Lifecycle Management | Lifecycle Management Policy |
+| **Xử lý sự kiện** | S3 Event, SQS, Lambda | Eventarc, Cloud Functions | Event Grid, Azure Functions |
+| **Tích hợp CDN** | Amazon CloudFront | Cloud CDN hoặc Firebase Hosting tùy kiến trúc | Azure Front Door hoặc Azure CDN |
+| **Điểm mạnh** | Hệ sinh thái AWS lớn, IAM chi tiết, phù hợp Backend độc lập | Phù hợp Flutter, hỗ trợ Firebase Authentication và Security Rules | Phù hợp tổ chức đang sử dụng hệ sinh thái Microsoft |
+| **Điểm cần lưu ý** | Cấu hình IAM và URL ký có độ phức tạp nhất định | Security Rules và cấu trúc đường dẫn phải được kiểm thử kỹ | SAS cần được giới hạn chặt về quyền và thời hạn |
+| **Mức phù hợp với bài tập** | Cao cho kiến trúc AWS hoàn chỉnh | **Rất cao cho prototype Flutter** | Trung bình nếu nhóm chưa dùng Azure |
+
+### 3.4. Phân tích từng nền tảng
+
+#### a. Amazon S3
+
+Amazon S3 phù hợp với hệ thống có Backend độc lập và yêu cầu kiểm soát quyền truy cập chi tiết.
+
+**Ưu điểm:**
+
+- Kết hợp tốt với Amazon Cognito, API Gateway và AWS Lambda.
+- Hỗ trợ Pre-signed URL để upload và download trực tiếp.
+- Hỗ trợ versioning và lifecycle.
+- Có thể tích hợp với SQS, Lambda và CloudFront.
+- Phù hợp với kiến trúc Backend mở rộng.
+
+**Hạn chế trong phạm vi bài tập:**
+
+- IAM và Bucket Policy cần được cấu hình cẩn thận.
+- Không được đưa AWS Access Key vào ứng dụng Flutter.
+- Thường cần Backend để kiểm tra quyền và cấp URL có thời hạn.
+- Khối lượng cấu hình lớn hơn Firebase đối với prototype sinh viên.
+
+#### b. Google Cloud Storage và Firebase Storage
+
+Cloud Storage for Firebase sử dụng hạ tầng Google Cloud Storage và tích hợp trực tiếp với Firebase Authentication.
+
+**Ưu điểm:**
+
+- Có plugin FlutterFire chính thức.
+- Dễ kết hợp với Google Sign-In.
+- Security Rules có thể kiểm tra Firebase UID.
+- Hỗ trợ upload theo tiến trình.
+- Phù hợp cho Web và Android.
+- Giảm khối lượng xây dựng Backend trong giai đoạn thử nghiệm.
+
+**Hạn chế:**
+
+- Security Rules phải được thiết kế và kiểm thử kỹ.
+- Cần bảo đảm metadata và nội dung tệp được cập nhật nhất quán.
+- Không nên sử dụng Download URL làm cơ chế phân quyền duy nhất.
+- Cần kiểm tra loại, dung lượng và tên tệp trước khi upload.
+
+#### c. Azure Blob Storage
+
+Azure Blob Storage phù hợp với hệ thống sử dụng Microsoft Azure và Microsoft Entra ID.
+
+**Ưu điểm:**
+
+- Tích hợp tốt với Microsoft Entra ID.
+- Có Azure RBAC và Shared Access Signature.
+- Hỗ trợ blob versioning và lifecycle.
+- Phù hợp với tổ chức đang sử dụng sản phẩm Microsoft.
+
+**Hạn chế trong phạm vi bài tập:**
+
+- Flutter thường cần gọi REST API hoặc thông qua Backend.
+- SAS cần giới hạn rõ quyền, tài nguyên và thời gian tồn tại.
+- Không tích hợp trực tiếp với Firebase Authentication.
+- Nhóm chưa có thành phần Azure khác để tận dụng hệ sinh thái.
+
+### 3.5. Lựa chọn dịch vụ cho phạm vi bài tập
+
+Nếu xây dựng hệ thống Backend hoàn chỉnh theo kiến trúc mục tiêu, Amazon S3 là lựa chọn phù hợp khi kết hợp với:
+
+```text
+Amazon Cognito
+      │
+      ▼
+API Gateway
+      │
+      ▼
+AWS Lambda
+   ┌──┴─────┐
+   ▼        ▼
+Amazon RDS  Amazon S3
+```
+
+Tuy nhiên, đối với bản thử nghiệm của nhóm, **Cloud Storage for Firebase** phù hợp hơn vì:
+
+1. Ứng dụng được phát triển bằng Flutter.
+2. Nhóm đồng thời tích hợp Firebase Authentication.
+3. Authentication và Storage sử dụng chung Firebase UID.
+4. FlutterFire cung cấp plugin cho cả xác thực và lưu trữ.
+5. Security Rules có thể giới hạn quyền truy cập theo người sở hữu.
+6. Nhóm có thể chứng minh luồng Cloud mà chưa cần triển khai Backend AWS hoàn chỉnh.
+
+### 3.6. Phương án thống nhất
+
+Nhóm thực hiện theo hai cấp độ:
+
+#### Kiến trúc mục tiêu
+
+Hybrid Cloud gồm:
+
+- Flutter Client.
+- SQLite Local Cache.
+- Backend API.
+- Metadata Database tập trung.
+- Object Storage riêng tư.
+- Cơ chế xác thực và phân quyền.
+- Cơ chế đồng bộ ngoại tuyến.
+
+#### Bản thử nghiệm trong phạm vi bài tập
+
+Firebase gồm:
+
+- Firebase Authentication.
+- Google Sign-In.
+- Cloud Storage for Firebase.
+- Firebase Security Rules.
+- SQLite Local Cache.
+- Auth State và Login Page trên Flutter.
+
+#### Cấu trúc lưu trữ đề xuất
+
+```text
+users/
+└── {uid}/
+    └── documents/
+        └── {documentId}/
+            └── {fileName}
+```
+
+Trong đó:
+
+| Thành phần | Ý nghĩa |
+|---|---|
+| `{uid}` | Định danh người dùng do Firebase Authentication cấp |
+| `{documentId}` | Định danh duy nhất của tài liệu |
+| `{fileName}` | Tên tệp đã được chuẩn hóa |
+| Database | Lưu metadata, trạng thái đồng bộ và đường dẫn Cloud |
+| Cloud Storage | Lưu nội dung nhị phân của tài liệu |
+
+Download URL không nên được coi là cơ chế phân quyền duy nhất. Quyền truy cập phải được kiểm tra bởi Firebase Security Rules hoặc Backend tin cậy.
 ## 4. Kiến trúc tích hợp và luồng dữ liệu
 
 ### 4.1 Sơ đồ
