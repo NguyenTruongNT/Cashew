@@ -196,6 +196,7 @@ class DocumentModel {
   final DocumentType type;
   final String notes;
   final String fileUrl;
+  final String? storagePath;
   final List<String> tags;
   final DocumentStatus status;
   final PriorityLevel priority;
@@ -211,6 +212,7 @@ class DocumentModel {
     required this.type,
     this.notes = '',
     this.fileUrl = '',
+    this.storagePath,
     this.tags = const [],
     this.status = DocumentStatus.pending,
     this.priority = PriorityLevel.medium,
@@ -229,6 +231,7 @@ class DocumentModel {
       'type': type.nameString,
       'notes': notes,
       'file_url': fileUrl,
+      'storage_path': storagePath,
       'tags': tags.join(','),
       'status': status.nameString,
       'priority': priority.index,
@@ -253,6 +256,7 @@ class DocumentModel {
       type: DocumentTypeExtension.fromString(map['type'] as String?),
       notes: map['notes'] as String? ?? '',
       fileUrl: map['file_url'] as String? ?? '',
+      storagePath: map['storage_path'] as String?,
       tags: parsedTags,
       status: DocumentStatusExtension.fromString(map['status'] as String?),
       priority: PriorityLevel.values[(map['priority'] as int? ?? 1).clamp(0, 2)],
@@ -273,6 +277,7 @@ class DocumentModel {
     DocumentType? type,
     String? notes,
     String? fileUrl,
+    String? storagePath,
     List<String>? tags,
     DocumentStatus? status,
     PriorityLevel? priority,
@@ -288,6 +293,7 @@ class DocumentModel {
       type: type ?? this.type,
       notes: notes ?? this.notes,
       fileUrl: fileUrl ?? this.fileUrl,
+      storagePath: storagePath ?? this.storagePath,
       tags: tags ?? this.tags,
       status: status ?? this.status,
       priority: priority ?? this.priority,

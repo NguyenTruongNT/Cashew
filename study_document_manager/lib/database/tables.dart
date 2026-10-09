@@ -39,6 +39,7 @@ class DocumentTable {
   static const String colType = 'type';             // 'lecture', 'assignment', 'reference', 'exam'
   static const String colNotes = 'notes';
   static const String colFileUrl = 'file_url';
+  static const String colStoragePath = 'storage_path';
   static const String colTags = 'tags';
   static const String colStatus = 'status';         // 'pending', 'inProgress', 'completed'
   static const String colPriority = 'priority';     // 0: Low, 1: Medium, 2: High
@@ -56,6 +57,7 @@ class DocumentTable {
       $colType TEXT NOT NULL,
       $colNotes TEXT,
       $colFileUrl TEXT,
+      $colStoragePath TEXT,
       $colTags TEXT,
       $colStatus TEXT NOT NULL DEFAULT 'pending',
       $colPriority INTEGER NOT NULL DEFAULT 1,

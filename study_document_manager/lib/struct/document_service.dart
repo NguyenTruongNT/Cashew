@@ -1,4 +1,5 @@
 import '../database/databaseGlobal.dart';
+import 'firebase_storage_service.dart';
 import 'models/document_models.dart';
 
 // =====================================================================
@@ -223,6 +224,10 @@ class DocumentService {
 
   /// Xóa tài liệu
   static Future<void> deleteDocument(String id) async {
+    final document = await database.getDocumentById(id);
+    if (document?.storagePath case final storagePath?) {
+      await FirebaseStorageService.instance.delete(storagePath);
+    }
     await database.deleteDocument(id);
   }
 

@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/documents/{documentId}/{fileId}/{fileName} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isAllowedDocument() {
+        return request.resource.size <= 20 * 1024 * 1024
+          && request.resource.contentType.matches(
+            '^(application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/vnd.ms-powerpoint|application/vnd.openxmlformats-officedocument.presentationml.presentation|application/vnd.ms-excel|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|text/plain)$'
+          );
+      }
+
+      allow read: if isOwner();
+      allow create, update: if isOwner() && isAllowedDocument();
+      allow delete: if isOwner();
+    }
+  }
+}
