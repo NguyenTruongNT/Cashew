@@ -54,9 +54,6 @@ Hybrid phù hợp vì tận dụng dữ liệu local hiện có nhưng bổ sung
 | **Firebase App Check** | Khuyến nghị đánh giá trước khi phát hành thật | Giúp giảm client không hợp lệ; không thay thế Authentication hoặc Security Rules. |
 | **Cloud Monitoring/Budget alerts** | Thiết lập vận hành ngoài mã nguồn | Theo dõi usage/chi phí; budget alert không phải hạn mức cứng ngăn phát sinh phí. |
 
-> Firebase Storage Rules hiện kiểm tra kích thước và MIME type do request khai báo. MIME này không chứng minh byte file thực sự là định dạng đó; nếu nhận file từ nguồn không tin cậy hoặc triển khai công khai cần kiểm tra nội dung ở backend/quy trình tin cậy và cân nhắc quét malware.
-
-## 4. Sơ đồ kiến trúc và luồng dữ liệu
 
 ### 4.1 Kiến trúc hiện thực trong prototype
 
@@ -96,11 +93,6 @@ Kiến trúc đích không được hiểu là đã triển khai. Trước khi b
 
 ### 4.4 Luồng dữ liệu đề xuất cho Firestore
 
-1. Sau khi xác thực, app đọc/ghi document metadata trong Firestore với `ownerUid` lấy từ phiên, không tin UID do người dùng nhập.
-2. Firestore Security Rules giới hạn đọc/ghi theo owner hoặc quyền chia sẻ đã thiết kế; client không được truy cập toàn bộ collection.
-3. SQLite tiếp tục làm cache local. Xác định rõ dữ liệu offline, xử lý xung đột, xóa, đăng xuất và chuyển thiết bị trước khi coi đây là đồng bộ production.
-
-## 5. Tác động bảo mật, chi phí và hiệu suất
 
 ### So sánh trước và sau
 
