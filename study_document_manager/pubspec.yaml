@@ -42,6 +42,11 @@ dependencies:
   uuid: ^4.4.0
   sqflite_common_ffi_web: ^0.4.3
   url_launcher: ^6.3.3
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  google_sign_in: ^7.2.0
+  firebase_storage: ^13.6.0
+  file_picker: ^13.1.0
 
 dev_dependencies:
   flutter_test:

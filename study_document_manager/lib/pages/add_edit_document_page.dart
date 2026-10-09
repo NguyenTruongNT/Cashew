@@ -1,10 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
+import '../struct/firebase_storage_service.dart';
 import '../struct/formatters.dart';
+import '../struct/google_auth_service.dart';
 import '../struct/models/document_models.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/framework/page_framework.dart';
@@ -46,6 +51,10 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
   DateTime? _selectedDeadline;
   List<SubjectModel> _availableSubjects = [];
   bool _isLoadingSubjects = true;
+  PlatformFile? _selectedCloudFile;
+  String? _storagePath;
+  bool _isSaving = false;
+  double? _uploadProgress;
 
   bool get isEditing => widget.initialDocument != null;
 
@@ -64,6 +73,7 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
     _isFavorite = doc?.isFavorite ?? false;
     _selectedSubjectId = doc?.subjectId ?? widget.defaultSubjectId;
     _selectedDeadline = doc?.deadline;
+    _storagePath = doc?.storagePath;
 
     _loadSubjects();
   }
@@ -75,7 +85,8 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
         _availableSubjects = list;
         final selectedSubject = list.where((s) => s.id == _selectedSubjectId);
         if (selectedSubject.isNotEmpty) {
-          _subjectInput = '${selectedSubject.first.code} - ${selectedSubject.first.name}';
+          _subjectInput =
+              '${selectedSubject.first.code} - ${selectedSubject.first.name}';
         }
         _isLoadingSubjects = false;
       });
@@ -103,9 +114,12 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
   }
 
   Future<String?> _resolveSubjectId() async {
-    final selectedSubject = _availableSubjects.where((s) => s.id == _selectedSubjectId);
+    final selectedSubject = _availableSubjects.where(
+      (s) => s.id == _selectedSubjectId,
+    );
     if (selectedSubject.isNotEmpty &&
-        _subjectInput.trim() == '${selectedSubject.first.code} - ${selectedSubject.first.name}') {
+        _subjectInput.trim() ==
+            '${selectedSubject.first.code} - ${selectedSubject.first.name}') {
       return selectedSubject.first.id;
     }
 
@@ -129,7 +143,9 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
     );
 
     if (duplicateCode.isNotEmpty || duplicateName.isNotEmpty) {
-      final existing = duplicateCode.isNotEmpty ? duplicateCode.first : duplicateName.first;
+      final existing = duplicateCode.isNotEmpty
+          ? duplicateCode.first
+          : duplicateName.first;
       if (existing.code.toLowerCase() == code.toLowerCase() &&
           existing.name.toLowerCase() == name.toLowerCase()) {
         return existing.id;
@@ -193,8 +209,41 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
     }
   }
 
+  Future<void> _pickCloudFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'ppt',
+          'pptx',
+          'xls',
+          'xlsx',
+          'txt',
+        ],
+      );
+      if (result.isEmpty || !mounted) return;
+      setState(() => _selectedCloudFile = result.single);
+    } catch (error) {
+      if (mounted) {
+        openSnackbar(
+          context,
+          message: 'Không thể chọn tệp: $error',
+          isError: true,
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
+    setState(() {
+      _isSaving = true;
+      _uploadProgress = null;
+    });
+
     try {
       final subjectId = await _resolveSubjectId();
       if (subjectId == null) return;
@@ -205,52 +254,105 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
           .where((e) => e.isNotEmpty)
           .toList();
 
-      if (isEditing) {
-        // CẬP NHẬT TÀI LIỆU (Update)
-        final updatedDoc = widget.initialDocument!.copyWith(
-          title: _titleController.text.trim(),
-          subjectId: subjectId,
-          type: _selectedType,
-          notes: _notesController.text.trim(),
-          fileUrl: _fileUrlController.text.trim(),
-          tags: rawTags,
-          priority: _selectedPriority,
-          isFavorite: _isFavorite,
-          deadline: _selectedDeadline,
-        );
-
-        await DocumentService.updateDocument(updatedDoc);
-        if (mounted) {
-          openSnackbar(context, message: 'Đã cập nhật tài liệu thành công!');
-          Navigator.pop(context, true);
+      final documentId = widget.initialDocument?.id ?? const Uuid().v4();
+      final oldStoragePath = widget.initialDocument?.storagePath;
+      String? uploadedStoragePath;
+      if (_selectedCloudFile != null) {
+        if (GoogleAuthService.instance.currentUser == null) {
+          throw StateError(
+            'Hãy đăng nhập Google trước khi tải tệp lên Firebase.',
+          );
         }
-      } else {
-        // TẠO MỚI TÀI LIỆU (Create)
-        final newDoc = DocumentModel(
-          id: const Uuid().v4(),
-          title: _titleController.text.trim(),
-          subjectId: subjectId,
-          type: _selectedType,
-          notes: _notesController.text.trim(),
-          fileUrl: _fileUrlController.text.trim(),
-          tags: rawTags,
-          status: DocumentStatus.pending,
-          priority: _selectedPriority,
-          isFavorite: _isFavorite,
-          deadline: _selectedDeadline,
-          createdDate: DateTime.now(),
-          updatedDate: DateTime.now(),
-        );
+        uploadedStoragePath = await FirebaseStorageService.instance
+            .uploadDocument(
+              file: _selectedCloudFile!,
+              documentId: documentId,
+              onProgress: (progress) {
+                if (mounted) setState(() => _uploadProgress = progress);
+              },
+            );
+        _storagePath = uploadedStoragePath;
+      }
 
-        await DocumentService.saveDocument(newDoc);
-        if (mounted) {
-          openSnackbar(context, message: 'Đã thêm tài liệu học tập mới!');
-          Navigator.pop(context, true);
+      final now = DateTime.now();
+      final document = isEditing
+          ? widget.initialDocument!.copyWith(
+              title: _titleController.text.trim(),
+              subjectId: subjectId,
+              type: _selectedType,
+              notes: _notesController.text.trim(),
+              fileUrl: _fileUrlController.text.trim(),
+              storagePath: _storagePath,
+              tags: rawTags,
+              priority: _selectedPriority,
+              isFavorite: _isFavorite,
+              deadline: _selectedDeadline,
+            )
+          : DocumentModel(
+              id: documentId,
+              title: _titleController.text.trim(),
+              subjectId: subjectId,
+              type: _selectedType,
+              notes: _notesController.text.trim(),
+              fileUrl: _fileUrlController.text.trim(),
+              storagePath: _storagePath,
+              tags: rawTags,
+              status: DocumentStatus.pending,
+              priority: _selectedPriority,
+              isFavorite: _isFavorite,
+              deadline: _selectedDeadline,
+              createdDate: now,
+              updatedDate: now,
+            );
+
+      try {
+        if (isEditing) {
+          await DocumentService.updateDocument(document);
+        } else {
+          await DocumentService.saveDocument(document);
         }
+      } catch (_) {
+        if (uploadedStoragePath != null) {
+          await FirebaseStorageService.instance.delete(uploadedStoragePath);
+        }
+        rethrow;
+      }
+
+      String? cleanupWarning;
+      if (oldStoragePath != null &&
+          oldStoragePath != _storagePath &&
+          uploadedStoragePath != null) {
+        try {
+          await FirebaseStorageService.instance.delete(oldStoragePath);
+        } on FirebaseException catch (error) {
+          cleanupWarning =
+              'Đã lưu tài liệu nhưng không xóa được tệp cũ: '
+              '${error.message ?? error.code}';
+        }
+      }
+
+      if (mounted) {
+        openSnackbar(
+          context,
+          message:
+              cleanupWarning ??
+              (isEditing
+                  ? 'Đã cập nhật tài liệu thành công!'
+                  : 'Đã thêm tài liệu học tập mới!'),
+          isError: cleanupWarning != null,
+        );
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         openSnackbar(context, message: 'Lỗi: ${e.toString()}', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _uploadProgress = null;
+        });
       }
     }
   }
@@ -266,10 +368,17 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            onPressed: _save,
-            icon: const Icon(Icons.check_rounded, size: 18),
+            onPressed: _isSaving ? null : _save,
+            icon: _isSaving
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded, size: 18),
             label: Text(isEditing ? 'Lưu' : 'Tạo mới'),
           ),
         ),
@@ -293,7 +402,8 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                     initialValue: TextEditingValue(text: _subjectInput),
                     optionsBuilder: (value) {
                       final query = value.text.trim().toLowerCase();
-                      if (query.isEmpty) return const Iterable<SubjectModel>.empty();
+                      if (query.isEmpty)
+                        return const Iterable<SubjectModel>.empty();
                       return _availableSubjects.where(
                         (subject) =>
                             subject.code.toLowerCase().contains(query) ||
@@ -304,47 +414,43 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                       _subjectInput = '${subject.code} - ${subject.name}';
                       setState(() => _selectedSubjectId = subject.id);
                     },
-                    fieldViewBuilder: (
-                      context,
-                      controller,
-                      focusNode,
-                      onFieldSubmitted,
-                    ) {
-                      return TextFormField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        textInputAction: TextInputAction.next,
-                        onChanged: (value) {
-                          _subjectInput = value;
-                          final selected = _availableSubjects.where(
-                            (subject) =>
-                                subject.id == _selectedSubjectId &&
-                                value.trim() ==
-                                    '${subject.code} - ${subject.name}',
+                    fieldViewBuilder:
+                        (context, controller, focusNode, onFieldSubmitted) {
+                          return TextFormField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            textInputAction: TextInputAction.next,
+                            onChanged: (value) {
+                              _subjectInput = value;
+                              final selected = _availableSubjects.where(
+                                (subject) =>
+                                    subject.id == _selectedSubjectId &&
+                                    value.trim() ==
+                                        '${subject.code} - ${subject.name}',
+                              );
+                              if (selected.isEmpty) _selectedSubjectId = null;
+                            },
+                            onFieldSubmitted: (_) => onFieldSubmitted(),
+                            validator: (value) {
+                              final selected = _availableSubjects.where(
+                                (subject) =>
+                                    subject.id == _selectedSubjectId &&
+                                    value?.trim() ==
+                                        '${subject.code} - ${subject.name}',
+                              );
+                              if (selected.isNotEmpty ||
+                                  _parseSubjectInput(value ?? '') != null) {
+                                return null;
+                              }
+                              return 'Nhập theo định dạng MÃ - Tên môn.';
+                            },
+                            decoration: const InputDecoration(
+                              hintText: 'Ví dụ: SWE302 - Kiến trúc phần mềm',
+                              prefixIcon: Icon(Icons.school_outlined),
+                              suffixIcon: Icon(Icons.expand_more_rounded),
+                            ),
                           );
-                          if (selected.isEmpty) _selectedSubjectId = null;
                         },
-                        onFieldSubmitted: (_) => onFieldSubmitted(),
-                        validator: (value) {
-                          final selected = _availableSubjects.where(
-                            (subject) =>
-                                subject.id == _selectedSubjectId &&
-                                value?.trim() ==
-                                    '${subject.code} - ${subject.name}',
-                          );
-                          if (selected.isNotEmpty ||
-                              _parseSubjectInput(value ?? '') != null) {
-                            return null;
-                          }
-                          return 'Nhập theo định dạng MÃ - Tên môn.';
-                        },
-                        decoration: const InputDecoration(
-                          hintText: 'Ví dụ: SWE302 - Kiến trúc phần mềm',
-                          prefixIcon: Icon(Icons.school_outlined),
-                          suffixIcon: Icon(Icons.expand_more_rounded),
-                        ),
-                      );
-                    },
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 4, top: 6, bottom: 12),
@@ -355,7 +461,10 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                   ),
 
                   // Phân loại tài liệu (Bài giảng / Bài tập / Tham khảo / Đề thi)
-                  const Text('Phân loại tài liệu *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text(
+                    'Phân loại tài liệu *',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -375,14 +484,18 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                         selectedColor: type.color.withValues(alpha: 0.2),
                         labelStyle: TextStyle(
                           color: isSelected ? type.color : null,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                         side: BorderSide(
                           color: isSelected
                               ? type.color
                               : Theme.of(context).colorScheme.outlineVariant,
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         onSelected: (val) {
                           if (val) {
                             setState(() {
@@ -404,28 +517,69 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                     validator: DocumentService.validateTitle,
                   ),
 
-                  // Đường dẫn File đính kèm hoặc URL trực tuyến
+                  // URL bên ngoài (tùy chọn)
                   CustomTextField(
                     controller: _fileUrlController,
-                    label: 'Đường dẫn File / Liên kết học tập',
-                    hint: 'Ví dụ: https://drive.google.com/... hoặc tài liệu.pdf',
+                    label: 'Liên kết học tập bên ngoài',
+                    hint:
+                        'Ví dụ: https://drive.google.com/... hoặc tài liệu.pdf',
                     prefixIcon: Icons.link_rounded,
                     validator: DocumentService.validateUrl,
                   ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _isSaving ? null : _pickCloudFile,
+                    icon: const Icon(Icons.cloud_upload_outlined),
+                    label: Text(
+                      _selectedCloudFile?.name ??
+                          (_storagePath == null
+                              ? 'Chọn tệp để tải lên Firebase'
+                              : 'Thay tệp Firebase đã lưu'),
+                    ),
+                  ),
+                  if (_uploadProgress case final progress?) ...[
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(value: progress),
+                    const SizedBox(height: 4),
+                    Text('Đang tải lên ${(progress * 100).round()}%'),
+                  ],
+                  if (_storagePath != null && _selectedCloudFile == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Tệp Firebase hiện có sẽ được giữ nguyên.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
 
                   // Nếu là bài tập hoặc đề thi: Chọn Hạn nộp (Deadline)
-                  if (_selectedType == DocumentType.assignment || _selectedType == DocumentType.exam) ...[
-                    const Text('Thời hạn hoàn thành (Deadline)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  if (_selectedType == DocumentType.assignment ||
+                      _selectedType == DocumentType.exam) ...[
+                    const Text(
+                      'Thời hạn hoàn thành (Deadline)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: _pickDeadline,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -438,7 +592,9 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                             Expanded(
                               child: Text(
                                 _selectedDeadline != null
-                                    ? DocumentFormatters.formatDateTime(_selectedDeadline)
+                                    ? DocumentFormatters.formatDateTime(
+                                        _selectedDeadline,
+                                      )
                                     : 'Chưa đặt hạn nộp (Bấm để chọn)',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -446,7 +602,9 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                                   fontSize: 14,
                                   color: _selectedDeadline != null
                                       ? Theme.of(context).colorScheme.onSurface
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                      : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -475,13 +633,25 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                   ),
 
                   // Mức độ ưu tiên
-                  const Text('Mức độ ưu tiên', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text(
+                    'Mức độ ưu tiên',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   SegmentedButton<PriorityLevel>(
                     segments: const [
-                      ButtonSegment(value: PriorityLevel.low, label: Text('Thấp')),
-                      ButtonSegment(value: PriorityLevel.medium, label: Text('Bình thường')),
-                      ButtonSegment(value: PriorityLevel.high, label: Text('Cao / Gấp')),
+                      ButtonSegment(
+                        value: PriorityLevel.low,
+                        label: Text('Thấp'),
+                      ),
+                      ButtonSegment(
+                        value: PriorityLevel.medium,
+                        label: Text('Bình thường'),
+                      ),
+                      ButtonSegment(
+                        value: PriorityLevel.high,
+                        label: Text('Cao / Gấp'),
+                      ),
                     ],
                     selected: {_selectedPriority},
                     onSelectionChanged: (set) {
@@ -503,8 +673,16 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
 
                   // Đánh dấu yêu thích / Quan trọng
                   SwitchListTile(
-                    title: const Text('Đánh dấu tài liệu quan trọng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: const Text('Ghim hoặc gắn sao để xem nhanh tại trang chủ'),
+                    title: const Text(
+                      'Đánh dấu tài liệu quan trọng',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Ghim hoặc gắn sao để xem nhanh tại trang chủ',
+                    ),
                     value: _isFavorite,
                     activeThumbColor: AppColors.warning,
                     onChanged: (val) {
@@ -513,7 +691,9 @@ class _AddEditDocumentPageState extends State<AddEditDocumentPage> {
                       });
                     },
                     secondary: Icon(
-                      _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                      _isFavorite
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
                       color: _isFavorite
                           ? AppColors.warning
                           : Theme.of(context).colorScheme.onSurfaceVariant,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
@@ -13,6 +14,7 @@ import 'add_edit_document_page.dart';
 import 'document_detail_page.dart';
 import 'document_list_page.dart';
 import 'document_search_page.dart';
+import 'account_page.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG GIAO DIỆN CHỨC NĂNG: TRANG CHỦ DASHBOARD]
@@ -60,12 +62,35 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _deleteDocument(String documentId) async {
+    try {
+      await DocumentService.deleteDocument(documentId);
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        openSnackbar(
+          context,
+          message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+          isError: true,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        openSnackbar(context, message: 'Không thể xóa tài liệu: $error', isError: true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PageFramework(
       title: 'Quản Lý Tài Liệu Học Tập',
       showBackButton: false,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.account_circle_outlined),
+          onPressed: () => pushRoute(context, const AccountPage()),
+          tooltip: 'Tài khoản Firebase',
+        ),
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => pushRoute(context, const DocumentSearchPage()),
@@ -427,7 +452,7 @@ class _HomePageState extends State<HomePage> {
                       context,
                       AddEditDocumentPage(initialDocument: doc),
                     ),
-                    onDelete: () => DocumentService.deleteDocument(doc.id),
+                    onDelete: () => _deleteDocument(doc.id),
                   );
                 }),
                 const SizedBox(height: 20),
@@ -480,7 +505,7 @@ class _HomePageState extends State<HomePage> {
                       context,
                       AddEditDocumentPage(initialDocument: doc),
                     ),
-                    onDelete: () => DocumentService.deleteDocument(doc.id),
+                    onDelete: () => _deleteDocument(doc.id),
                   );
                 }),
             ],

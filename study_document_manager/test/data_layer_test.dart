@@ -28,7 +28,11 @@ void main() {
       final subjects = await db.getAllSubjects();
       final docs = await db.getAllDocuments();
 
-      expect(subjects.isNotEmpty, isTrue, reason: 'Phải có môn học mẫu ban đầu');
+      expect(
+        subjects.isNotEmpty,
+        isTrue,
+        reason: 'Phải có môn học mẫu ban đầu',
+      );
       expect(docs.isNotEmpty, isTrue, reason: 'Phải có tài liệu mẫu ban đầu');
     });
 
@@ -40,6 +44,7 @@ void main() {
         type: DocumentType.lecture,
         notes: 'Ghi chú bài học kiểm thử',
         fileUrl: 'https://example.com/test.pdf',
+        storagePath: 'users/test-user/documents/test-doc/file-id/test.pdf',
         tags: ['UnitTest', 'Cashew'],
         status: DocumentStatus.pending,
         priority: PriorityLevel.high,
@@ -53,9 +58,16 @@ void main() {
 
       final retrieved = await db.getDocumentById('test_doc_101');
       expect(retrieved, isNotNull);
-      expect(retrieved!.title, equals('Kiểm thử Đơn vị trong Kiến trúc Cashew'));
+      expect(
+        retrieved!.title,
+        equals('Kiểm thử Đơn vị trong Kiến trúc Cashew'),
+      );
       expect(retrieved.tags, contains('UnitTest'));
       expect(retrieved.isFavorite, isTrue);
+      expect(
+        retrieved.storagePath,
+        equals('users/test-user/documents/test-doc/file-id/test.pdf'),
+      );
     });
 
     test('3. Chỉnh sửa thông tin tài liệu (Update)', () async {
@@ -81,7 +93,11 @@ void main() {
       await db.deleteDocument(targetDoc.id);
 
       final retrieved = await db.getDocumentById(targetDoc.id);
-      expect(retrieved, isNull, reason: 'Tài liệu sau khi xóa phải trả về null');
+      expect(
+        retrieved,
+        isNull,
+        reason: 'Tài liệu sau khi xóa phải trả về null',
+      );
     });
 
     test('5. Tìm kiếm tài liệu theo từ khóa và bộ lọc (Search)', () async {
@@ -95,31 +111,36 @@ void main() {
       );
 
       // Tìm kiếm theo loại tài liệu (Chỉ lấy bài tập)
-      final searchByType = await db.searchDocuments(type: DocumentType.assignment);
-      expect(searchByType.every((d) => d.type == DocumentType.assignment), isTrue);
+      final searchByType = await db.searchDocuments(
+        type: DocumentType.assignment,
+      );
+      expect(
+        searchByType.every((d) => d.type == DocumentType.assignment),
+        isTrue,
+      );
 
       // Tìm kiếm theo môn học
       final searchBySubject = await db.searchDocuments(subjectId: 'sub_swe');
       expect(searchBySubject.every((d) => d.subjectId == 'sub_swe'), isTrue);
     });
 
-    test('6. Kiểm tra luồng phản ứng dữ liệu (Reactive Stream watchAllDocuments)', () async {
-      expectLater(
-        db.watchAllDocuments,
-        emits(isA<List<DocumentModel>>()),
-      );
+    test(
+      '6. Kiểm tra luồng phản ứng dữ liệu (Reactive Stream watchAllDocuments)',
+      () async {
+        expectLater(db.watchAllDocuments, emits(isA<List<DocumentModel>>()));
 
-      // Thêm 1 tài liệu để kích hoạt Stream phát dữ liệu mới
-      final testDoc = DocumentModel(
-        id: 'reactive_doc_01',
-        title: 'Tài liệu kích hoạt Reactive Stream',
-        subjectId: 'sub_mob',
-        type: DocumentType.reference,
-        createdDate: DateTime.now(),
-        updatedDate: DateTime.now(),
-      );
+        // Thêm 1 tài liệu để kích hoạt Stream phát dữ liệu mới
+        final testDoc = DocumentModel(
+          id: 'reactive_doc_01',
+          title: 'Tài liệu kích hoạt Reactive Stream',
+          subjectId: 'sub_mob',
+          type: DocumentType.reference,
+          createdDate: DateTime.now(),
+          updatedDate: DateTime.now(),
+        );
 
-      await db.insertDocument(testDoc);
-    });
+        await db.insertDocument(testDoc);
+      },
+    );
   });
 }
