@@ -1,4 +1,4 @@
-import 'package:firebase_storage/firebase_storage.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,9 +7,11 @@ import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
+
 import '../struct/firebase_storage_service.dart';
 import '../struct/formatters.dart';
 import '../struct/models/document_models.dart';
+import '../widgets/cloud/transfer_progress_bar.dart';
 import '../widgets/confirm_delete_dialog.dart';
 import '../widgets/framework/page_framework.dart';
 import 'add_edit_document_page.dart';
@@ -34,11 +36,26 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   DocumentModel? _document;
   SubjectModel? _subject;
   bool _isLoading = true;
+  UploadTask? _uploadTask;
+  StreamSubscription<TaskSnapshot>? _uploadSubscription;
+  bool _isUploading = false;
+  bool _isDownloading = false;
+  int _transferredBytes = 0;
+  int? _totalBytes;
+  String? _transferError;
+  String? _transferFileName;
+  bool _lastTransferWasUpload = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_uploadSubscription?.cancel());
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -53,6 +70,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         _document = doc;
         _subject = sub;
         _isLoading = false;
+        _transferError = null;
       });
     }
   }
@@ -126,7 +144,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
 
     final uri = parsedUri.hasScheme ? parsedUri : Uri.file(value);
     if (!['http', 'https', 'file'].contains(uri.scheme.toLowerCase())) {
-      openSnackbar(context, message: 'Chỉ hỗ trợ đường dẫn web hoặc đường dẫn tệp.');
+      openSnackbar(
+        context,
+        message: 'Chỉ hỗ trợ đường dẫn web hoặc đường dẫn tệp.',
+      );
       return;
     }
 
@@ -142,7 +163,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
       if (mounted) {
         openSnackbar(
           context,
-          message: 'Không thể mở nguồn tài liệu: ${error.message ?? error.code}',
+          message:
+              'Không thể mở nguồn tài liệu: ${error.message ?? error.code}',
         );
       }
     } on UnsupportedError {
@@ -170,6 +192,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -194,27 +217,29 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     return PageFramework(
       title: 'Chi tiết tài liệu',
       actions: [
-        IconButton(
-          icon: Icon(
-            doc.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-            color: doc.isFavorite ? AppColors.warning : null,
+        if (!doc.isShared) ...[
+          IconButton(
+            icon: Icon(
+              doc.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: doc.isFavorite ? AppColors.warning : null,
+            ),
+            onPressed: _toggleFavorite,
+            tooltip: 'Yêu thích',
           ),
-          onPressed: _toggleFavorite,
-          tooltip: 'Yêu thích',
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit_outlined),
-          onPressed: _onEdit,
-          tooltip: 'Chỉnh sửa',
-        ),
-        IconButton(
-          icon: const Icon(
-            Icons.delete_outline_rounded,
-            color: AppColors.error,
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _onEdit,
+            tooltip: 'Chỉnh sửa',
           ),
-          onPressed: _onDelete,
-          tooltip: 'Xóa tài liệu',
-        ),
+          IconButton(
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.error,
+            ),
+            onPressed: _onDelete,
+            tooltip: 'Xóa tài liệu',
+          ),
+        ],
       ],
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -229,6 +254,26 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (doc.isShared) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.people_outline_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tài liệu dùng chung · Chỉ đọc',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -244,6 +289,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(doc.type.icon, size: 16, color: typeColor),
                             const SizedBox(width: 6),
@@ -304,9 +350,13 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Cập nhật: ${DocumentFormatters.formatDateTime(doc.updatedDate)}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      Expanded(
+                        child: Text(
+                          'Cập nhật: ${DocumentFormatters.formatDateTime(doc.updatedDate)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ),
                     ],
                   ),
@@ -377,7 +427,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: _toggleStatus,
+                        onPressed: doc.isShared ? null : _toggleStatus,
                         icon: Icon(
                           isCompleted
                               ? Icons.undo_rounded
@@ -407,19 +457,21 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.notes_rounded,
                         size: 20,
                         color: AppColors.primary,
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Ghi chú & Tóm tắt',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Ghi chú & Tóm tắt',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ],
@@ -443,6 +495,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ),
           const SizedBox(height: 12),
 
+
           // Liên kết tài liệu / File đính kèm
           if (doc.fileUrl.isNotEmpty || doc.storagePath != null) ...[
             Card(
@@ -460,18 +513,24 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                           Icons.attachment_rounded,
                           size: 20,
                           color: AppColors.accent,
+
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Đường dẫn / Tệp đính kèm',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                      ),
+                      if (!doc.isShared)
+                        IconButton(
+                          onPressed: _isUploading || _isDownloading
+                              ? null
+                              : _pickAndUploadFile,
+                          tooltip: doc.fileUrl.isEmpty
+                              ? 'Đính kèm tệp'
+                              : 'Thay thế tệp đính kèm',
+                          icon: const Icon(Icons.upload_file_rounded),
                         ),
-                      ],
-                    ),
+                    ],
+                  ),
+                  if (doc.fileUrl.isNotEmpty) ...[
                     const Divider(height: 20),
+
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -523,11 +582,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-          ],
+          ),
+          const SizedBox(height: 12),
 
           // Thẻ phân loại (Tags)
           if (doc.tags.isNotEmpty) ...[
@@ -540,19 +599,21 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.tag_rounded,
                           size: 20,
                           color: AppColors.primary,
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Thẻ phân loại (Tags)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Thẻ phân loại (Tags)',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -564,7 +625,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                       children: doc.tags.map((tag) {
                         return Chip(
                           label: Text('#$tag'),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.10),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.10,
+                          ),
                           labelStyle: TextStyle(
                             fontSize: 12,
                             color: Theme.of(context).colorScheme.primary,

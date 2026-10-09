@@ -153,6 +153,7 @@ class SubjectModel {
   final int colorValue;
   final String iconName;
   final DateTime createdDate;
+  final bool isShared;
 
   SubjectModel({
     required this.id,
@@ -161,6 +162,7 @@ class SubjectModel {
     required this.colorValue,
     required this.iconName,
     required this.createdDate,
+    this.isShared = false,
   });
 
   Color get color => Color(colorValue);
@@ -184,6 +186,7 @@ class SubjectModel {
       colorValue: map['color'] as int,
       iconName: map['icon'] as String,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
     );
   }
 }
@@ -204,6 +207,7 @@ class DocumentModel {
   final DateTime? deadline;
   final DateTime createdDate;
   final DateTime updatedDate;
+  final bool isShared;
 
   DocumentModel({
     required this.id,
@@ -220,6 +224,7 @@ class DocumentModel {
     this.deadline,
     required this.createdDate,
     required this.updatedDate,
+    this.isShared = false,
   });
 
   /// Chuyển đổi sang Map để lưu trữ trong SQLite
@@ -266,6 +271,7 @@ class DocumentModel {
           : null,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
       updatedDate: DateTime.fromMillisecondsSinceEpoch(map['updated_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
     );
   }
 
@@ -285,6 +291,7 @@ class DocumentModel {
     DateTime? deadline,
     DateTime? createdDate,
     DateTime? updatedDate,
+    bool? isShared,
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -301,6 +308,7 @@ class DocumentModel {
       deadline: deadline ?? this.deadline,
       createdDate: createdDate ?? this.createdDate,
       updatedDate: updatedDate ?? DateTime.now(),
+      isShared: isShared ?? this.isShared,
     );
   }
 }
