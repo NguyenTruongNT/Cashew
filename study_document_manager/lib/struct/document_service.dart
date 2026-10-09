@@ -1,4 +1,5 @@
 import '../database/databaseGlobal.dart';
+import 'firebase_storage_service.dart';
 import 'models/document_models.dart';
 
 // =====================================================================
@@ -110,8 +111,13 @@ class DocumentService {
       return null; // Được phép để trống
     }
     final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null &&
+        uri.scheme == 'firebase-storage' &&
+        uri.path.isNotEmpty) {
+      return null;
+    }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      final uri = Uri.tryParse(trimmed);
       if (uri == null || !uri.hasAuthority) {
         return 'Định dạng đường dẫn liên kết URL không hợp lệ';
       }
@@ -223,6 +229,10 @@ class DocumentService {
 
   /// Xóa tài liệu
   static Future<void> deleteDocument(String id) async {
+    final document = await database.getDocumentById(id);
+    if (document?.storagePath case final storagePath?) {
+      await FirebaseStorageService.instance.delete(storagePath);
+    }
     await database.deleteDocument(id);
   }
 

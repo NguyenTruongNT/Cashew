@@ -1,11 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 
 class GoogleAuthService {
   GoogleAuthService._();
 
   static final GoogleAuthService instance = GoogleAuthService._();
+
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
@@ -57,14 +60,16 @@ class GoogleAuthService {
       rethrow;
     } catch (error) {
       throw Exception('Không thể đăng nhập bằng Google: $error');
+
     }
   }
 
   Future<void> signOut() async {
+
     await _firebaseAuth.signOut();
 
     if (!kIsWeb) {
-      await _initializeGoogleSignIn();
+
       await _googleSignIn.signOut();
     }
   }

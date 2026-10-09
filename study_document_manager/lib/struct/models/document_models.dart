@@ -153,6 +153,7 @@ class SubjectModel {
   final int colorValue;
   final String iconName;
   final DateTime createdDate;
+  final bool isShared;
 
   SubjectModel({
     required this.id,
@@ -161,6 +162,7 @@ class SubjectModel {
     required this.colorValue,
     required this.iconName,
     required this.createdDate,
+    this.isShared = false,
   });
 
   Color get color => Color(colorValue);
@@ -184,6 +186,7 @@ class SubjectModel {
       colorValue: map['color'] as int,
       iconName: map['icon'] as String,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
     );
   }
 }
@@ -196,6 +199,7 @@ class DocumentModel {
   final DocumentType type;
   final String notes;
   final String fileUrl;
+  final String? storagePath;
   final List<String> tags;
   final DocumentStatus status;
   final PriorityLevel priority;
@@ -203,6 +207,7 @@ class DocumentModel {
   final DateTime? deadline;
   final DateTime createdDate;
   final DateTime updatedDate;
+  final bool isShared;
 
   DocumentModel({
     required this.id,
@@ -211,6 +216,7 @@ class DocumentModel {
     required this.type,
     this.notes = '',
     this.fileUrl = '',
+    this.storagePath,
     this.tags = const [],
     this.status = DocumentStatus.pending,
     this.priority = PriorityLevel.medium,
@@ -218,6 +224,7 @@ class DocumentModel {
     this.deadline,
     required this.createdDate,
     required this.updatedDate,
+    this.isShared = false,
   });
 
   /// Chuyển đổi sang Map để lưu trữ trong SQLite
@@ -229,6 +236,7 @@ class DocumentModel {
       'type': type.nameString,
       'notes': notes,
       'file_url': fileUrl,
+      'storage_path': storagePath,
       'tags': tags.join(','),
       'status': status.nameString,
       'priority': priority.index,
@@ -253,6 +261,7 @@ class DocumentModel {
       type: DocumentTypeExtension.fromString(map['type'] as String?),
       notes: map['notes'] as String? ?? '',
       fileUrl: map['file_url'] as String? ?? '',
+      storagePath: map['storage_path'] as String?,
       tags: parsedTags,
       status: DocumentStatusExtension.fromString(map['status'] as String?),
       priority: PriorityLevel.values[(map['priority'] as int? ?? 1).clamp(0, 2)],
@@ -262,6 +271,7 @@ class DocumentModel {
           : null,
       createdDate: DateTime.fromMillisecondsSinceEpoch(map['created_date'] as int),
       updatedDate: DateTime.fromMillisecondsSinceEpoch(map['updated_date'] as int),
+      isShared: map['owner_id'] == '__shared__',
     );
   }
 
@@ -273,6 +283,7 @@ class DocumentModel {
     DocumentType? type,
     String? notes,
     String? fileUrl,
+    String? storagePath,
     List<String>? tags,
     DocumentStatus? status,
     PriorityLevel? priority,
@@ -280,6 +291,7 @@ class DocumentModel {
     DateTime? deadline,
     DateTime? createdDate,
     DateTime? updatedDate,
+    bool? isShared,
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -288,6 +300,7 @@ class DocumentModel {
       type: type ?? this.type,
       notes: notes ?? this.notes,
       fileUrl: fileUrl ?? this.fileUrl,
+      storagePath: storagePath ?? this.storagePath,
       tags: tags ?? this.tags,
       status: status ?? this.status,
       priority: priority ?? this.priority,
@@ -295,6 +308,7 @@ class DocumentModel {
       deadline: deadline ?? this.deadline,
       createdDate: createdDate ?? this.createdDate,
       updatedDate: updatedDate ?? DateTime.now(),
+      isShared: isShared ?? this.isShared,
     );
   }
 }

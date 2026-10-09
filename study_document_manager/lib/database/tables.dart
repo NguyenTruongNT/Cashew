@@ -15,6 +15,7 @@ class SubjectTable {
   static const String colColor = 'color';
   static const String colIcon = 'icon';
   static const String colCreatedDate = 'created_date';
+  static const String colOwnerId = 'owner_id';
 
   /// Câu lệnh SQL tạo bảng Môn học
   static const String createTableSql = '''
@@ -24,9 +25,13 @@ class SubjectTable {
       $colCode TEXT NOT NULL,
       $colColor INTEGER NOT NULL,
       $colIcon TEXT NOT NULL,
-      $colCreatedDate INTEGER NOT NULL
+      $colCreatedDate INTEGER NOT NULL,
+      $colOwnerId TEXT NOT NULL DEFAULT 'local'
     );
   ''';
+
+  static const String createOwnerIndexSql =
+      'CREATE INDEX IF NOT EXISTS idx_subjects_owner ON $tableName ($colOwnerId);';
 }
 
 /// Định nghĩa tên bảng và các cột của bảng Tài liệu học tập (Documents)
@@ -39,6 +44,7 @@ class DocumentTable {
   static const String colType = 'type';             // 'lecture', 'assignment', 'reference', 'exam'
   static const String colNotes = 'notes';
   static const String colFileUrl = 'file_url';
+  static const String colStoragePath = 'storage_path';
   static const String colTags = 'tags';
   static const String colStatus = 'status';         // 'pending', 'inProgress', 'completed'
   static const String colPriority = 'priority';     // 0: Low, 1: Medium, 2: High
@@ -46,6 +52,7 @@ class DocumentTable {
   static const String colDeadline = 'deadline';     // Milliseconds since epoch hoặc null
   static const String colCreatedDate = 'created_date';
   static const String colUpdatedDate = 'updated_date';
+  static const String colOwnerId = 'owner_id';
 
   /// Câu lệnh SQL tạo bảng Tài liệu
   static const String createTableSql = '''
@@ -56,6 +63,7 @@ class DocumentTable {
       $colType TEXT NOT NULL,
       $colNotes TEXT,
       $colFileUrl TEXT,
+      $colStoragePath TEXT,
       $colTags TEXT,
       $colStatus TEXT NOT NULL DEFAULT 'pending',
       $colPriority INTEGER NOT NULL DEFAULT 1,
@@ -63,7 +71,11 @@ class DocumentTable {
       $colDeadline INTEGER,
       $colCreatedDate INTEGER NOT NULL,
       $colUpdatedDate INTEGER NOT NULL,
+      $colOwnerId TEXT NOT NULL DEFAULT 'local',
       FOREIGN KEY ($colSubjectId) REFERENCES ${SubjectTable.tableName} (${SubjectTable.colId}) ON DELETE CASCADE
     );
   ''';
+
+  static const String createOwnerIndexSql =
+      'CREATE INDEX IF NOT EXISTS idx_documents_owner ON $tableName ($colOwnerId);';
 }

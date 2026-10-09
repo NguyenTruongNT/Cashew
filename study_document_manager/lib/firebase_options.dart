@@ -23,17 +23,21 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
+
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for ios - '
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
+
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
+
         return windows;
+
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -55,6 +59,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
+
     apiKey: 'AIzaSyCtmgq7yEBDP-fnz9pZ__h2pptL4knUtbk',
     appId: '1:747752646321:web:916c9127241c3152922490',
     messagingSenderId: '747752646321',
@@ -63,6 +68,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'cashew-study-docs-3afed.firebasestorage.app',
     measurementId: 'G-CPL8LL8X5N',
   );
+
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCtmgq7yEBDP-fnz9pZ__h2pptL4knUtbk',
     appId: '1:747752646321:web:916c9127241c3152922490',
@@ -71,5 +77,6 @@ class DefaultFirebaseOptions {
     authDomain: 'cashew-study-docs-3afed.firebaseapp.com',
     storageBucket: 'cashew-study-docs-3afed.firebasestorage.app',
     measurementId: 'G-CPL8LL8X5N',
+
   );
 }

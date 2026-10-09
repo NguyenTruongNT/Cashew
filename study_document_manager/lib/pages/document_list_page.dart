@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
@@ -40,21 +41,72 @@ class _DocumentListPageState extends State<DocumentListPage> {
   bool _onlyFavorites = false;
 
   Map<String, SubjectModel> _subjectMap = {};
+  List<DocumentModel> _documents = [];
+  bool _isLoading = true;
+  StreamSubscription<List<SubjectModel>>? _subjectsSubscription;
+  StreamSubscription<List<DocumentModel>>? _documentsSubscription;
 
   @override
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
     _selectedSubjectId = widget.initialSubjectId;
-    _loadSubjects();
+
+    // 1. Đồng bộ tức thì từ In-Memory Cache của AppDatabase (0ms độ trễ, không xoay tròn)
+    _documents = database.cachedDocuments;
+    _subjectMap = {for (final s in database.cachedSubjects) s.id: s};
+    _isLoading = _documents.isEmpty && _subjectMap.isEmpty;
+
+    // 2. Lắng nghe cập nhật Reactive từ streams
+    _subjectsSubscription = database.watchAllSubjects.listen((subjects) {
+      if (mounted) {
+        setState(() {
+          _subjectMap = {for (final s in subjects) s.id: s};
+        });
+      }
+    });
+    _documentsSubscription = database.watchAllDocuments.listen((docs) {
+      if (mounted) {
+        setState(() {
+          _documents = docs;
+          _isLoading = false;
+        });
+      }
+    });
+
+    // 3. Tải và đồng bộ nền (có timeout bảo vệ 2s)
+    _loadData();
   }
 
-  Future<void> _loadSubjects() async {
-    final list = await database.getAllSubjects();
-    if (mounted) {
-      setState(() {
-        _subjectMap = {for (final s in list) s.id: s};
-      });
+  @override
+  void dispose() {
+    _subjectsSubscription?.cancel();
+    _documentsSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final subjects = await database.getAllSubjects().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => database.cachedSubjects,
+      );
+      final docs = await database.getAllDocuments().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => database.cachedDocuments,
+      );
+      if (mounted) {
+        setState(() {
+          _subjectMap = {for (final s in subjects) s.id: s};
+          _documents = docs;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Lỗi tải tài liệu: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -76,9 +128,21 @@ class _DocumentListPageState extends State<DocumentListPage> {
       builder: (ctx) => ConfirmDeleteDialog(
         documentTitle: doc.title,
         onConfirm: () async {
-          await DocumentService.deleteDocument(doc.id);
-          if (mounted) {
-            openSnackbar(context, message: 'Đã xóa tài liệu!');
+          try {
+            await DocumentService.deleteDocument(doc.id);
+            if (mounted) openSnackbar(context, message: 'Đã xóa tài liệu!');
+          } on FirebaseException catch (error) {
+            if (mounted) {
+              openSnackbar(
+                context,
+                message: 'Không thể xóa tệp Firebase: ${error.message ?? error.code}',
+                isError: true,
+              );
+            }
+          } catch (error) {
+            if (mounted) {
+              openSnackbar(context, message: 'Không thể xóa tài liệu: $error', isError: true);
+            }
           }
         },
       ),
@@ -197,7 +261,10 @@ class _DocumentListPageState extends State<DocumentListPage> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String?>(
                         isExpanded: true,
-                        value: _selectedSubjectId,
+                        value: (_selectedSubjectId != null &&
+                                _subjectMap.containsKey(_selectedSubjectId))
+                            ? _selectedSubjectId
+                            : null,
                         hint: const Text('Tất cả môn học', style: TextStyle(fontSize: 12)),
                         items: [
                           const DropdownMenuItem<String?>(
@@ -241,71 +308,67 @@ class _DocumentListPageState extends State<DocumentListPage> {
 
           const SizedBox(height: 6),
 
-          // Danh sách phản ứng theo Reactive Stream của Cashew
+          // Danh sách phản ứng theo Reactive State của Cashew
           Expanded(
-            child: StreamBuilder<List<DocumentModel>>(
-              stream: database.watchAllDocuments,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Builder(
+                    builder: (context) {
+                      final filteredList = DocumentService.filterAndSort(
+                        source: _documents,
+                        typeFilter: _selectedType,
+                        subjectIdFilter: _selectedSubjectId,
+                        onlyFavorites: _onlyFavorites,
+                        sortOption: _sortOption,
+                      );
 
-                final rawList = snapshot.data ?? [];
-                final filteredList = DocumentService.filterAndSort(
-                  source: rawList,
-                  typeFilter: _selectedType,
-                  subjectIdFilter: _selectedSubjectId,
-                  onlyFavorites: _onlyFavorites,
-                  sortOption: _sortOption,
-                );
+                      if (filteredList.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.folder_open_rounded,
+                                size: 64,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Chưa có tài liệu nào',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Bấm "+ Thêm tài liệu" để bắt đầu lưu trữ',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-                if (filteredList.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.folder_open_rounded,
-                          size: 64,
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Chưa có tài liệu nào',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Bấm "+ Thêm tài liệu" để bắt đầu lưu trữ',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80, top: 4),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) {
-                    final doc = filteredList[index];
-                    final sub = _subjectMap[doc.subjectId];
-                    return DocumentCard(
-                      document: doc,
-                      subject: sub,
-                      onTap: () => pushRoute(
-                        context,
-                        DocumentDetailPage(documentId: doc.id),
-                      ),
-                      onFavoriteToggle: () => _onFavoriteToggle(doc),
-                      onStatusToggle: () => _onStatusToggle(doc),
-                      onEdit: () => _onEdit(doc),
-                      onDelete: () => _onDelete(doc),
-                    );
-                  },
-                );
-              },
-            ),
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 80, top: 4),
+                        itemCount: filteredList.length,
+                        itemBuilder: (context, index) {
+                          final doc = filteredList[index];
+                          final sub = _subjectMap[doc.subjectId];
+                          return DocumentCard(
+                            document: doc,
+                            subject: sub,
+                            onTap: () => pushRoute(
+                              context,
+                              DocumentDetailPage(documentId: doc.id),
+                            ),
+                            onFavoriteToggle: () => _onFavoriteToggle(doc),
+                            onStatusToggle: () => _onStatusToggle(doc),
+                            onEdit: () => _onEdit(doc),
+                            onDelete: () => _onDelete(doc),
+                          );
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),

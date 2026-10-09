@@ -1,19 +1,25 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../colors.dart';
 import '../database/databaseGlobal.dart';
 import '../functions.dart';
 import '../struct/document_service.dart';
+
 import '../struct/google_auth_service.dart';
+
 import '../struct/models/document_models.dart';
 import '../widgets/document_card.dart';
 import '../widgets/framework/page_framework.dart';
+import '../widgets/cloud/account_menu_button.dart';
+import '../widgets/cloud/cloud_status_strip.dart';
 import 'add_edit_document_page.dart';
 import 'document_detail_page.dart';
 import 'document_list_page.dart';
 import 'document_search_page.dart';
+import 'account_page.dart';
 
 // =====================================================================
 // [KIẾN TRÚC CASHEW - TẦNG GIAO DIỆN CHỨC NĂNG: TRANG CHỦ DASHBOARD]
@@ -35,11 +41,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Map<String, SubjectModel> _subjectMap = {};
 
+
+
   StreamSubscription<List<SubjectModel>>? _subjectsSubscription;
 
   @override
   void initState() {
     super.initState();
+
 
     _loadSubjects();
 
@@ -48,6 +57,7 @@ class _HomePageState extends State<HomePage> {
     ) {
       if (!mounted) {
         return;
+
       }
 
       setState(() {
@@ -65,6 +75,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadSubjects() async {
+
     final List<SubjectModel> subjects = await database.getAllSubjects();
 
     if (!mounted) {
@@ -124,6 +135,7 @@ class _HomePageState extends State<HomePage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+
     }
   }
 
@@ -134,17 +146,24 @@ class _HomePageState extends State<HomePage> {
       showBackButton: false,
       actions: <Widget>[
         IconButton(
+          icon: const Icon(Icons.account_circle_outlined),
+          onPressed: () => pushRoute(context, const AccountPage()),
+          tooltip: 'Tài khoản Firebase',
+        ),
+        IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () {
             pushRoute(context, const DocumentSearchPage());
           },
           tooltip: 'Tìm kiếm tài liệu',
         ),
+
         IconButton(
           icon: const Icon(Icons.logout_rounded),
           onPressed: _confirmSignOut,
           tooltip: 'Đăng xuất',
         ),
+
       ],
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
@@ -157,6 +176,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: StreamBuilder<List<DocumentModel>>(
         stream: database.watchAllDocuments,
+
         builder:
             (
               BuildContext context,
@@ -224,6 +244,7 @@ class _HomePageState extends State<HomePage> {
                           color: AppColors.primary.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
+
                         ),
                       ],
                     ),
@@ -399,6 +420,7 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // =======================================================
@@ -411,6 +433,7 @@ class _HomePageState extends State<HomePage> {
                       children: <Widget>[
                         const Text(
                           'Môn học',
+
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
@@ -505,6 +528,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       }).toList(),
                     ),
+
                   ),
                   const SizedBox(height: 24),
 
@@ -541,6 +565,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ],
+
                       ),
                     ),
                     ...pendingAssignments.take(3).map((DocumentModel document) {
@@ -602,6 +627,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
+
                   ),
                   if (topRecent.isEmpty)
                     const Padding(
@@ -647,6 +673,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               );
             },
+
       ),
     );
   }
