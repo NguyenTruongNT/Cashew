@@ -129,11 +129,11 @@ Nhóm 12 thống nhất quy trình Git Flow: Mỗi thành viên tạo nhánh ri�
 
 | Mục | Yêu Cầu Checklist | Người Phụ Trách | Người Phối Hợp | Chi Tiết Công Việc & Sản Phẩm Bàn Giao | Tên Nhánh Git (Tên + Chức năng) | Trạng Thái |
 |:---:|:---|:---:|:---:|:---|:---|:---:|
-| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang `NguyenTruongNT/Cashew`<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn các thành viên clone mã nguồn về local | `truong-setup-repo` |Chưa hoàn thành |
-| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK (v3.47.5), Dart SDK, Android SDK 36<br>• Chạy `flutter pub get` trong thư mục `budget`<br>• Viết báo cáo cài đặt & xử lý dependencies tại [`SETUP_ENVIRONMENT.md`](SETUP_ENVIRONMENT.md) | `khanh-setup-dependencies` | Chưa hoàn thành |
-| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Vũ Hải Đăng** | Lý Đình Sơn, Vũ Tuấn Khanh | • Chạy ứng dụng trên Emulator / thiết bị thật / Web<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Kiểm thử số dư, hạn mức danh mục và biểu đồ báo cáo<br>• Chụp 5 ảnh minh chứng lưu tại `screenshots/crud/` | `dang-test-crud` | Chưa hoàn thành |
-| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Lý Đình Sơn** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Sơn):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi màu sắc chủ đạo sang Emerald `#00796B`, đổi banner nhận diện nhóm.<br>• **Tính năng (Đăng):** Bổ sung danh mục chi tiêu học tập sinh viên, định dạng tiền tệ mặc định VNĐ, tối ưu hóa bộ lọc chi tiêu.<br>• Đã hoàn thành, review code và merge vào nhánh `main`. | `son-custom-ui-branding`<br>`khanh-custom-currency-vnd`<br>`dang-custom-feature` | Chưa hoàn thành |
-| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Vũ Tuấn Khanh, Vũ HẢi Đăng, Lý Đình Sơn | • Đóng gói ứng dụng thành bản phát hành Web/PWA (`build/web`) và gói nén `Cashew-Web-Release.zip`<br>• Khởi chạy và kiểm thử live session ứng dụng trên trình duyệt Chrome<br>• Tổng hợp toàn bộ ảnh chụp màn hình minh chứng kết quả<br>• Hoàn thiện README và nộp link GitHub đúng hạn | `truong-build-release` | Chưa hoàn thành |
+| **1** | **Fork và Clone mã nguồn Cashew từ GitHub** | **Nguyễn Văn Trường** | Cả nhóm | • Fork repo `jameskokoska/Cashew` sang `NguyenTruongNT/Cashew`<br>• Cấu hình collaborators & phân quyền nhánh<br>• Hướng dẫn các thành viên clone mã nguồn về local | `truong-setup-repo` |✅ Hoàn thành |
+| **2** | **Cài đặt dependencies & cấu hình môi trường** | **Vũ Tuấn Khanh** | Nguyễn Văn Trường | • Kiểm tra Flutter SDK (v3.47.5), Dart SDK, Android SDK 36<br>• Chạy `flutter pub get` trong thư mục `budget`<br>• Viết báo cáo cài đặt & xử lý dependencies tại [`SETUP_ENVIRONMENT.md`](SETUP_ENVIRONMENT.md) | `khanh-setup-dependencies` | ✅ Hoàn thành |
+| **3** | **Khởi chạy local & kiểm tra chức năng cơ bản (CRUD)** | **Vũ Hải Đăng** | Lý Đình Sơn, Vũ Tuấn Khanh | • Chạy ứng dụng trên Emulator / thiết bị thật / Web<br>• Kiểm thử chức năng: Thêm, Sửa, Xóa chi tiêu<br>• Kiểm thử số dư, hạn mức danh mục và biểu đồ báo cáo<br>• Chụp 5 ảnh minh chứng lưu tại `screenshots/crud/` | `dang-test-crud` | ✅ Hoàn thành|
+| **4** | **Tùy chỉnh tính năng hoặc thay đổi giao diện (UI)** | **Lý Đình Sơn** (UI)<br>**Vũ Hải Đăng** (Tính năng) | Nguyễn Văn Trường (Review & Merge) | • **UI (Sơn):** Tùy chỉnh thông tin nhóm tại Settings/About, đổi màu sắc chủ đạo sang Emerald `#00796B`, đổi banner nhận diện nhóm.<br>• **Tính năng (Đăng):** Bổ sung danh mục chi tiêu học tập sinh viên, định dạng tiền tệ mặc định VNĐ, tối ưu hóa bộ lọc chi tiêu.<br>• Đã hoàn thành, review code và merge vào nhánh `main`. | `son-custom-ui-branding`<br>`khanh-custom-currency-vnd`<br>`dang-custom-feature` | ✅ Hoàn thành |
+| **5** | **Đóng gói sản phẩm & Nộp bài** | **Nguyễn Văn Trường** | Vũ Tuấn Khanh, Vũ HẢi Đăng, Lý Đình Sơn | • Đóng gói ứng dụng thành bản phát hành Web/PWA (`build/web`) và gói nén `Cashew-Web-Release.zip`<br>• Khởi chạy và kiểm thử live session ứng dụng trên trình duyệt Chrome<br>• Tổng hợp toàn bộ ảnh chụp màn hình minh chứng kết quả<br>• Hoàn thiện README và nộp link GitHub đúng hạn | `truong-build-release` | ✅ Hoàn thành |
 
 ---
 
@@ -148,10 +148,10 @@ Nhóm 12 thống nhất quy trình Git Flow: Mỗi thành viên tạo nhánh ri�
 
 | Thành Viên | Tiền Tố Tên | Tên Nhánh Khi Push Code | Mục Đích / Chức Năng Phụ Trách | Trạng Thái Nhánh |
 |---|:---:|:---|:---|:---:|
-| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo<br>• Đóng gói sản phẩm và hoàn thiện tài liệu nộp bài |  Chưa merge<br> Chưa hoàn thành |
-| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-dependencies`<br>`khanh-test-crud` | • Thiết lập thư viện và tài liệu môi trường<br>• Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch |  Chưa merge<br> Chưa hoàn thành |
-| **Vũ Hải Đăng** | `dang-` | `dang-custom-ui-branding`<br>`dang-custom-theme` | • Tùy chỉnh giao diện: màn hình giới thiệu nhóm, logo, banner<br>• Tùy biến màu sắc, theme theo nhận diện nhóm |  Chưa merge<br> Chưa hoàn thành |
-| **Lý Đình Sơn** | `son-` | `son-custom-currency-vnd`<br>`son-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định, format số tiền<br>• Thêm danh mục chi tiêu sinh viên & cải tiến bộ lọc |  Chưa merge<br> Chưa hoàn thành |
+| **Nguyễn Văn Trường** | `truong-` | `truong-setup-repo`<br>`truong-build-release` | • Cấu hình dự án, quản lý repo<br>• Đóng gói sản phẩm và hoàn thiện tài liệu nộp bài | ✅ Đã merge<br> ✅ Hoàn thành|
+| **Vũ Tuấn Khanh** | `khanh-` | `khanh-setup-dependencies`<br>`khanh-test-crud` | • Thiết lập thư viện và tài liệu môi trường<br>• Thực hiện và ghi log kiểm thử Thêm/Sửa/Xóa giao dịch |   ✅ Đã  merge<br> ✅ Hoàn thành |
+| **Vũ Hải Đăng** | `dang-` | `dang-custom-ui-branding`<br>`dang-custom-theme` | • Tùy chỉnh giao diện: màn hình giới thiệu nhóm, logo, banner<br>• Tùy biến màu sắc, theme theo nhận diện nhóm |   ✅ Đã merge<br>✅ Hoàn thành |
+| **Lý Đình Sơn** | `son-` | `son-custom-currency-vnd`<br>`son-custom-feature` | • Tùy chỉnh tiền tệ VNĐ mặc định, format số tiền<br>• Thêm danh mục chi tiêu sinh viên & cải tiến bộ lọc |   ✅ Đã merge<br> ✅ Hoàn thành |
 
 
 ---
